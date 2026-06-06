@@ -1,0 +1,157 @@
+# Agent Knowledge Toolkit (AKT)
+
+A personal, git-backed knowledge base for coding agents. AKT captures the *why*
+behind your work — decisions, rationale, and per-session handoffs — and surfaces
+the relevant pieces back to a future agent when it starts a related task, across
+all your repos.
+
+The premise: a coding agent's biggest gap isn't the code, it's the **context** —
+why something was built the way it was, what was tried and rejected, what to watch
+out for. AKT makes capturing that nearly free, and — more importantly — makes it
+**discoverable** at the moment a new task begins.
+
+> **Status: kernel MVP.** This is the portable core — capture + recall + continuity.
+> The learning protocol, planning/workflow toolkit, and plugin distribution are
+> designed but not yet built (see [Roadmap](#roadmap)).
+
+## How it works
+
+- **Markdown is the source of truth.** Every unit of work is a `story.md` with a
+  little frontmatter, plus lightweight `sessions/NN.md` handoffs. Plain files in a
+  git repo — portable, diffable, tool-agnostic.
+- **`INDEX.md` is a derived cache.** One line per story (decision + keywords + path),
+  regenerated from the stories — never hand-edited. It's what makes recall fast and
+  is safe to delete and rebuild.
+- **Recall is a seam.** Given a task description, recall returns the most relevant
+  story paths. Today that's keyword scoring over `INDEX.md`; it can be swapped for
+  embeddings later **without changing any stored artifact**.
+- **Capture is a byproduct.** You don't hand-write knowledge. The lifecycle commands
+  prompt the agent to record the handoff/decision at the moment it already has the
+  context in head.
+
+Three tiers: `sessions/` (transient) → `story.md` (durable, per-task) → `AGENTS.md`
+(durable, global rules), with `INDEX.md` as the lens over the middle tier.
+
+## Requirements
+
+- Python 3.9+ (standard library only — no third-party dependencies)
+- git
+
+## Install
+
+Zero-install — clone and run as a module:
+
+```bash
+git clone <this-repo> agent-knowledge-toolkit
+cd agent-knowledge-toolkit
+python3 -m akt --help
+```
+
+Initialize a knowledge base (a standalone git repo you keep wherever you like —
+git-backing it gives you history and cross-machine sync):
+
+```bash
+python3 -m akt init ~/knowledge
+```
+
+This scaffolds the knowledge base and records its path in `~/.claude/akt-config.md`
+(override the config location with the `AKT_CONFIG` environment variable).
+
+## Quick start
+
+```bash
+# Start a story (one per feature/PR). Prints the story directory.
+# (--date is optional; it defaults to today. Pinned here so the example is reproducible.)
+STORY=$(python3 -m akt start-story webapp "Auth token refresh" --date 2026-06-05)
+
+# At the end of a working session, write a handoff for the next agent (from stdin):
+python3 -m akt end-session "$STORY" <<'EOF'
+State: refactor done
+Done: moved refresh to lazy-on-401
+Next: add tests
+Watch out: token clock skew
+EOF
+
+# When the work is done, distill the durable record and index it (from stdin):
+python3 -m akt finish-story "$STORY" --stdin <<'EOF'
+---
+repo: webapp
+slug: auth-token-refresh
+date: 2026-06-05
+summary: Moved refresh from cron to lazy-on-401 to stop thundering-herd reauth
+keys: auth, token, rate-limit, webapp
+---
+## Problem
+Cron-based refresh caused thundering-herd reauth.
+## Decisions
+- Lazy refresh on 401 — because cron drift synchronized clients — rejected fixed-interval cron
+## Outcome
+Reauth storms gone; watch clock skew.
+## Links
+EOF
+
+# Later, on a new task, surface relevant prior decisions:
+python3 -m akt recall "how do I refresh an auth token"
+# -> stories/webapp/2026-06-05-auth-token-refresh/story.md
+```
+
+## Commands
+
+### CLI (`python3 -m akt <command>`)
+
+| Command | What it does |
+|---------|--------------|
+| `init <path>` | Create a knowledge base at `<path>` and record it in config |
+| `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` + `sessions/01.md`; prints the path |
+| `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin) |
+| `finish-story <story_path> --stdin` | Validate + write the distilled `story.md` (from stdin) and append its `INDEX.md` line |
+| `recall "<query>" [--limit N]` | Print the most relevant story paths for a task (default 3) |
+| `reindex` | Rebuild `INDEX.md` from all `story.md` files |
+
+### Slash commands (Claude Code)
+
+`.claude/commands/` provides thin wrappers that add the model judgment around the CLI:
+
+- `/start-story` — begin a story for the current repo
+- `/end-session` — write a session handoff
+- `/finish-story` — distill the story and index it
+- `/recall` — surface and judge relevant past stories before starting work
+
+## Knowledge base layout
+
+```
+knowledge/
+  stories/
+    <repo>/<date>-<slug>/
+      story.md          # source of truth: problem, decisions + why, outcome
+      sessions/01.md    # per-session handoffs (continuity within a story)
+      sessions/02.md
+  AGENTS.md             # global rules (graduated patterns — future work)
+  INDEX.md              # derived search cache (regenerable; do not hand-edit)
+```
+
+`story.md` is intentionally tight; the high-value payload is the
+**decision → because → rejected-alternative** line, the thing an agent can't
+recover by reading code.
+
+## Testing
+
+```bash
+python3 -m unittest discover -s tests
+```
+
+## Roadmap
+
+The kernel ships first. Designed and queued (see `docs/superpowers/`):
+
+1. **Learning protocol** — recurring patterns accrue evidence and graduate into
+   repo-local or global `AGENTS.md` rules, with provenance.
+2. **Planning / workflow toolkit** — swarm planning as a swappable default, plus
+   PR and daily-status automations, all layered on the kernel via two touchpoints
+   (`recall` before work, `finish-story` after).
+3. **Distribution** — package as a one-command install.
+
+## Design docs
+
+- Design spec: [`docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-v2-design.md`](docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-v2-design.md)
+- Kernel implementation plan: [`docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md`](docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md)
