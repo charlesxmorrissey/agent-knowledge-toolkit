@@ -1,4 +1,13 @@
-# Agent Knowledge Toolkit (AKT)
+```
+ █████╗ ██╗  ██╗████████╗
+██╔══██╗██║ ██╔╝╚══██╔══╝
+███████║█████╔╝    ██║
+██╔══██║██╔═██╗    ██║
+██║  ██║██║  ██╗   ██║
+╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
+```
+
+# Agent Knowledge Toolkit
 
 A personal, git-backed knowledge base for coding agents. AKT captures the *why*
 behind your work — decisions, rationale, and per-session handoffs — and surfaces
