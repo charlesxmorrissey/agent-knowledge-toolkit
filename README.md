@@ -187,5 +187,5 @@ The kernel ships first. Designed and queued (see `docs/superpowers/`):
 
 ## Design docs
 
-- Design spec: [`docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-v2-design.md`](docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-v2-design.md)
+- Design spec: [`docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md`](docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md)
 - Kernel implementation plan: [`docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md`](docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md)

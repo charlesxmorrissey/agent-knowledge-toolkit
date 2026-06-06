@@ -1,23 +1,22 @@
-# Agent Knowledge Toolkit v2 — Design
+# Agent Knowledge Toolkit — Design
 
 - **Date:** 2026-06-05
 - **Status:** Approved design, pre-implementation
-- **Type:** Redesign (v1 exists in a separate private repo; treated as input, not target)
 - **Scope:** **Personal / single-user.** No team. The user works across multiple of
   their own repos and machines. "Cross-repo" means across the user's own repos;
   the knowledge repo is git-backed for history + cross-machine sync, not sharing.
 
 ## Context
 
-A working v1 exists: a git-backed knowledge base capturing planning artifacts,
-decision rationale, and agent changelogs per story across repos, plus a toolkit of
-commands/skills (swarm planning, PR/daily workflows, a hit-counted learning protocol
-that graduates patterns into a shared `AGENTS.md`). This document redesigns it for
-**personal use** — a single developer compounding context across their own repos.
+This is the design for a git-backed personal knowledge base for coding agents: it
+captures planning artifacts, decision rationale, and per-story changelogs across all of
+a developer's repos, so future agents have rich context on *why* things were built the
+way they were. The goal is a single developer compounding context across their own
+repos — capture that's nearly free, and knowledge that actually resurfaces when relevant.
 
 ## Problem statement
 
-v1 has four pain points, all confirmed:
+A naive "just capture everything" knowledge base has four failure modes this design targets:
 
 1. **Too heavy to adopt** — too many files, too much setup ceremony (installing meant
    hand-copying files one screen at a time). For personal use this shows up as: painful
@@ -26,19 +25,19 @@ v1 has four pain points, all confirmed:
    but future agents don't read them. If retrieval doesn't pay off, capture is pure tax.
 3. **Learning protocol is weak** — hit-counted graduation into `AGENTS.md` suffers from
    wrong thresholds, bloat, non-generalizing patterns, and low trust.
-4. **Too coupled / not portable** — capture is entangled with swarm planning; hard to
-   swap tools or run outside the original setup.
+4. **Too coupled / not portable** — when capture is entangled with a specific
+   planning/implementation tool, it's hard to swap tools or run it outside that one setup.
 
 **Root cause of #2 (the one that matters most): discovery.** The relevant artifact
-exists but never surfaces at the right moment. v1's discovery is a manually-maintained
-`_tags.md` registry — it depends on the capturing agent tagging well *and* the future
-agent choosing to grep and read. Two opt-in steps, both fragile.
+exists but never surfaces at the right moment. The naive approach to discovery is a
+manually-maintained tag registry — it depends on the capturing agent tagging well *and*
+the future agent choosing to grep and read. Two opt-in steps, both fragile.
 
 **Priority retrieval problem:** cross-story / cross-repo recall — a *new* task should
 surface relevant decisions from past, unrelated stories in any repo. (Intra-story
 continuity matters too but is the easier "load latest state" problem.)
 
-### v2 north star
+### North star
 
 > When an agent starts a task, the relevant prior decisions — from any past story, in
 > any repo — surface automatically, without anyone tagging well or remembering to
@@ -46,9 +45,9 @@ continuity matters too but is the easier "load latest state" problem.)
 
 ## Architecture spine — Hybrid (markdown is truth, the index is a disposable cache)
 
-The central tension: v1 is git-backed markdown (portable, reviewable, no infra — keep
-this), but cross-repo semantic recall is exactly what markdown + a manual tag file is
-worst at. Resolution:
+The central tension: git-backed markdown is portable, reviewable, and needs no infra —
+but cross-repo semantic recall is exactly what markdown + a manual tag file is worst at.
+Resolution:
 
 - **Artifacts stay plain markdown in git** — the source of truth. Portable, diffable,
   tool-agnostic.
@@ -56,8 +55,8 @@ worst at. Resolution:
   Day 1 it is a generated `INDEX.md` that the model reads and matches against
   (zero infra). There is a clean seam to swap in embeddings/vector search later
   **without changing any artifact format**.
-- **Decouple *what we store* from *how we search*** — this is the architectural mistake
-  v1 made, and the fix.
+- **Decouple *what we store* from *how we search*** — conflating the two is the core
+  architectural mistake; keeping them separate is the fix.
 
 This single choice attacks all four pains: discovery (auto-injection + a real index),
 heaviness (markdown + model, no infra to start), coupling (markdown is tool-agnostic),
@@ -67,11 +66,12 @@ and it reframes the learning protocol as promoting decisions up an index hierarc
 
 One **personal knowledge repo** (standalone git, separate from code repos) that agents
 in all your repos read and write — this is what makes cross-repo recall possible, and
-git-backing it gives you history + cross-machine sync. (v1's `team_base_path`, renamed
-to a personal `knowledge_base_path`; kept.)
+git-backing it gives you history + cross-machine sync. The base path is configured as
+`knowledge_base_path`.
 
-Collapse v1's five artifact types (planning artifacts, decision rationale, agent
-changelogs, session logs, tags) into **two durable types + one derived type**:
+Collapse the five artifact types a naive setup accumulates (planning artifacts, decision
+rationale, agent changelogs, session logs, tags) into **two durable types + one derived
+type**:
 
 ```
 knowledge/
@@ -96,7 +96,7 @@ knowledge/
 `AGENTS.md` (durable, global across your repos), with `INDEX.md` as the lens over the
 middle tier.
 
-## 2. Discovery & injection (the heart of v2)
+## 2. Discovery & injection (the heart of the design)
 
 **Index line** — one per story, written for single-read fuzzy matching by the model:
 
@@ -119,7 +119,7 @@ context read — why the markdown-index approach is viable on day one.
 **Deliberately no always-on hook** that injects on every prompt — that is token noise
 and reintroduces heaviness. Recall fires at the moment work begins, not constantly.
 
-**Upgrade seam (the C promise, concrete):** recall hides behind one interface —
+**Upgrade seam (concrete):** recall hides behind one interface —
 *"given a task description, return the N most relevant story paths."* Day 1 = model
 reads `INDEX.md`. Later = vector query returns the same paths. Capture format and
 everything downstream never change.
@@ -203,8 +203,8 @@ mistakes stop repeating across projects.
 
 ## 5. Decoupling — a tiny portable kernel, a swappable toolkit
 
-v1's coupling: knowledge capture entangled inside swarm-planning logic. v2 splits into
-two layers with a strict dependency direction.
+A naive coupling entangles knowledge capture inside the planning/implementation logic.
+This design splits into two layers with a strict dependency direction.
 
 **The Knowledge Contract (kernel — tiny, tool-agnostic, mandatory):**
 - `recall` — read the relevant past (Section 2)
@@ -234,13 +234,13 @@ Maps onto install modes:
 
 ## 6. Adoption / install
 
-**Two repos, clean roles** (v1 blurs them):
+**Two repos, clean roles:**
 - **Toolkit repo** = the *code* (commands, skills, scripts), installed into `~/.claude/`.
 - **Personal knowledge repo** = the *data* (`stories/`, `AGENTS.md`, `INDEX.md`); the
   `knowledge_base_path`. Git-backed so it syncs across your machines and keeps history.
 
-Install = clone the toolkit, run `/setup`, point at your personal knowledge repo, pick a
-mode. One config file (`~/.claude/akt-config.md`) holds paths + mode (as in v1).
+Install = clone the toolkit, put `akt` on your PATH, point it at your personal knowledge
+repo. One config file (`~/.claude/akt-config.md`) holds the path + mode.
 
 **Distribute as one installable unit** — a Claude Code plugin (or one-command installer
 that clones + links). "Photograph the repo screen-by-screen" must never be the install
@@ -253,12 +253,12 @@ markdown + the model, nothing to provision.
 
 ## Build order (decomposition for implementation)
 
-v2 is large (kernel + recall/index + capture + learning + swarm + workflows + install).
-The whole design is captured here as one coherent architecture, but **implementation
-decomposes into sequenced plans**:
+The full design is large (kernel + recall/index + capture + learning + swarm + workflows
++ install). The whole design is captured here as one coherent architecture, but
+**implementation decomposes into sequenced plans**:
 
 1. **Kernel first — the MVP.** `recall` + `INDEX.md`, the capture lifecycle
-   (`start/end-session/finish`), the model, layout, config, and `/setup` Minimal mode.
+   (`start/end-session/finish`), the model, layout, config, and minimal install.
    This alone delivers discovery + capture + continuity — the core value.
 2. **Learning protocol** — `LEARNINGS.md`, `graduate`, `prune-learnings`, `AGENTS.md`
    tiers.
@@ -275,5 +275,5 @@ Each layer is independently shippable on top of the kernel.
   is in use and we can measure.
 - **Session log retention policy** — archive vs prune after story close; exact policy TBD
   during kernel implementation.
-- **`reindex` / migration from v1** — how to bulk-generate `INDEX.md` and migrate v1
-  artifacts (tags/stories) into the v2 layout. Belongs to the kernel plan.
+- **`reindex` / bulk import** — how to bulk-generate `INDEX.md` from existing `story.md`
+  files. Belongs to the kernel plan.

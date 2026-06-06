@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the portable kernel of Agent Knowledge Toolkit v2 — recall + capture lifecycle over a git-backed personal knowledge base — as a zero-install Python CLI plus thin Claude Code slash commands.
+**Goal:** Build the portable kernel of the Agent Knowledge Toolkit — recall + capture lifecycle over a git-backed personal knowledge base — as a zero-install Python CLI plus thin Claude Code slash commands.
 
 **Architecture:** Markdown is the source of truth (`story.md` with minimal frontmatter); `INDEX.md` is a derived, regenerable search cache. A `python3 -m akt` CLI does all deterministic file/text work (scaffold stories, write session handoffs, parse/append/rebuild the index, keyword-scored recall, init + config). Thin `.claude/commands/*.md` slash commands wrap the CLI and carry the LLM judgment (distillation prose, final recall relevance). Recall hides behind one interface — *query → ranked story paths* — so keyword scoring can later be swapped for embeddings without touching artifacts.
 
 **Tech Stack:** Python 3.9 (stdlib only: `argparse`, `pathlib`, `re`, `datetime`, `tempfile`, `unittest`). No third-party deps. Run as `python3 -m akt`; test with `python3 -m unittest discover -s tests`.
 
-**Spec:** `docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-v2-design.md`
+**Spec:** `docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md`
 
 **Conventions locked for this plan (all tasks must match exactly):**
 
@@ -1406,7 +1406,7 @@ Expected: all tests PASS. Kernel MVP complete.
 - Config (`~/.claude/akt-config.md`, `knowledge_base_path`, `install_mode: minimal`) → Tasks 3, 8.
 - Zero-infra, no install → `python3 -m akt`, stdlib only (header).
 - Freshness via append-at-finish + `reindex` → Tasks 5, 9, 11.
-- *Deferred (correctly out of kernel scope, per spec build order):* learning protocol / `AGENTS.md` graduation (Plan 2), swarm + workflow toolkit (Plan 3), plugin distribution + full `/setup` modes (Plan 4). `init` provides the Minimal-mode bootstrap the kernel needs.
+- *Deferred (correctly out of kernel scope, per spec build order):* learning protocol / `AGENTS.md` graduation (Plan 2), swarm + workflow toolkit (Plan 3), plugin distribution + full install modes (Plan 4). `init` provides the minimal bootstrap the kernel needs.
 
 **2. Placeholder scan:** No "TBD"/"handle edge cases"/"similar to" — every code and test step contains complete content. The template strings inside `story.py` (`<decision> — because ...`) are intentional file *content* the tool writes, not plan placeholders.
 
