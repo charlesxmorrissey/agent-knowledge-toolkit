@@ -38,7 +38,8 @@ def start_story(kb_path, repo, title, date):
     (d / "sessions").mkdir(parents=True)
     meta = {"repo": repo, "slug": slug, "date": date, "summary": "", "keys": ""}
     (d / "story.md").write_text(build_frontmatter(meta) + _STORY_TEMPLATE.format(title=title))
-    (d / "sessions" / "01.md").write_text(_SESSION_TEMPLATE.format(n=1))
+    # Session handoffs are written by end_session (starting at 01.md), not pre-seeded —
+    # so a single-session story has an empty sessions/ rather than a blank placeholder.
     return d
 
 
