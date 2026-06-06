@@ -133,8 +133,8 @@ akt recall "how do I refresh an auth token"
 | Command | What it does |
 |---------|--------------|
 | `init <path>` | Create a knowledge base at `<path>` and record it in config |
-| `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` + `sessions/01.md`; prints the path |
-| `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin) |
+| `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path |
+| `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md` |
 | `finish-story <story_path> --stdin` | Validate + write the distilled `story.md` (from stdin) and append its `INDEX.md` line |
 | `recall "<query>" [--limit N]` | Print the most relevant story paths for a task (default 3) |
 | `reindex` | Rebuild `INDEX.md` from all `story.md` files |
@@ -145,8 +145,11 @@ akt recall "how do I refresh an auth token"
 
 - `/start-story` — begin a story for the current repo
 - `/end-session` — write a session handoff
-- `/finish-story` — distill the story and index it
+- `/finish-story` — distill the story, index it, and commit + push the knowledge base
 - `/recall` — surface and judge relevant past stories before starting work
+
+With the optional auto-recall rule installed (above), the agent runs `/recall` and
+`/finish-story` on its own — you don't have to invoke them.
 
 ## Knowledge base layout
 
@@ -155,8 +158,8 @@ knowledge/
   stories/
     <repo>/<date>-<slug>/
       story.md          # source of truth: problem, decisions + why, outcome
-      sessions/01.md    # per-session handoffs (continuity within a story)
-      sessions/02.md
+      sessions/        # handoffs, created only by /end-session (empty for single-session stories)
+        01.md          #   01.md, 02.md, … appear when you end a session mid-story
   AGENTS.md             # global rules (graduated patterns — future work)
   INDEX.md              # derived search cache (regenerable; do not hand-edit)
 ```
