@@ -23,7 +23,7 @@ allowed-tools: Bash, Read
    ```
 3. Pipe it in; the CLI validates required sections + non-empty summary, then appends the INDEX.md line:
    ```bash
-   python3 -m akt finish-story <story_path> --stdin <<'EOF'
+   akt finish-story <story_path> --stdin <<'EOF'
    <the full story.md content above>
    EOF
    ```
