@@ -174,16 +174,25 @@ recover by reading code.
 python3 -m unittest discover -s tests
 ```
 
-## Roadmap
+## Status & roadmap
 
-The kernel ships first. Designed and queued (see `docs/superpowers/`):
+**Shipped:**
+- Kernel — `recall`, capture lifecycle (`start-story` / `end-session` / `finish-story`),
+  `INDEX.md`, `reindex`, config, `init`.
+- `akt` launcher + global slash commands — use it from any repo.
+- `/finish-story` auto-commits **and pushes** the knowledge base.
+- Optional auto-recall/capture rule (`claude/akt-rule.md`) — the agent runs recall before
+  a task and captures a story when work wraps, without you invoking anything.
 
+**Next, in build order (see `docs/superpowers/`):**
 1. **Learning protocol** — recurring patterns accrue evidence and graduate into
-   repo-local or global `AGENTS.md` rules, with provenance.
+   repo-local or global `AGENTS.md` rules, with provenance. (Pays off once you've
+   accumulated stories and patterns start repeating.)
 2. **Planning / workflow toolkit** — swarm planning as a swappable default, plus
    PR and daily-status automations, all layered on the kernel via two touchpoints
    (`recall` before work, `finish-story` after).
-3. **Distribution** — package as a one-command install.
+3. **Distribution** — a true one-command installer / Claude Code plugin (the launcher +
+   manual command copy is the current stopgap).
 
 ## Design docs
 
