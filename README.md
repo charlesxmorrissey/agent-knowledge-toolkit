@@ -62,6 +62,22 @@ cp .claude/commands/{recall,start-story,end-session,finish-story}.md ~/.claude/c
 (Ensure `~/.local/bin` is on your `PATH`.) After this, `akt …` and the `/recall`,
 `/start-story`, `/end-session`, `/finish-story` slash commands work in every repo.
 
+### Automatic recall & capture (optional)
+
+So you don't have to remember to run `/recall`, install the rule in
+[`claude/akt-rule.md`](claude/akt-rule.md) into your global Claude config. It tells the
+agent to recall relevant past stories before a non-trivial task and to capture the story
+when meaningful work wraps up — and it's a no-op when AKT isn't configured.
+
+```bash
+cp claude/akt-rule.md ~/.claude/AKT.md
+# then add an import line to ~/.claude/CLAUDE.md:
+printf '@AKT.md\n' >> ~/.claude/CLAUDE.md
+```
+
+It's agent-instructed (not a hard hook), so it's smart and low-noise but not 100%
+deterministic — the agent may skip recall on borderline-trivial work.
+
 Initialize a knowledge base (a standalone git repo you keep wherever you like —
 git-backing it gives you history and cross-machine sync):
 
