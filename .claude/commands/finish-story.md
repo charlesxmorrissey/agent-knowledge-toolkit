@@ -27,4 +27,11 @@ allowed-tools: Bash, Read
    <the full story.md content above>
    EOF
    ```
-4. Commit the knowledge repo (the `knowledge_base_path`), e.g. `git -C <kb> add -A && git -C <kb> commit -m "story: <repo>/<slug>"`.
+4. Commit the knowledge base (`knowledge_base_path` from `~/.claude/akt-config.md`), then push if a remote is configured. Do not fail the flow when there is no remote or you're offline:
+   ```bash
+   git -C <kb> add -A
+   git -C <kb> commit -m "story: <repo>/<slug>"
+   git -C <kb> remote get-url origin >/dev/null 2>&1 \
+     && git -C <kb> push \
+     || echo "knowledge base committed locally (push skipped: no remote or offline)"
+   ```
