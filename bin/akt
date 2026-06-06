@@ -1,0 +1,17 @@
+#!/bin/sh
+# akt — launcher for the Agent Knowledge Toolkit CLI.
+#
+# Runs `python3 -m akt` from anywhere by resolving this script's own location
+# (following symlinks) and putting the toolkit repo on PYTHONPATH. This lets you
+# symlink it onto your PATH (e.g. ~/.local/bin/akt) and use the CLI + slash
+# commands from any repo, with no install/packaging step.
+self="$0"
+while [ -L "$self" ]; do
+  link="$(readlink "$self")"
+  case "$link" in
+    /*) self="$link" ;;
+    *) self="$(dirname "$self")/$link" ;;
+  esac
+done
+root="$(cd "$(dirname "$self")/.." && pwd)"
+PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m akt "$@"
