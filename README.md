@@ -42,7 +42,7 @@ Three tiers: `sessions/` (transient) → `story.md` (durable, per-task) → `AGE
 Zero-install — clone and run as a module from the repo:
 
 ```bash
-git clone <this-repo> agent-knowledge-toolkit
+git clone https://github.com/charlesxmorrissey/agent-knowledge-toolkit.git
 cd agent-knowledge-toolkit
 python3 -m akt --help
 ```
