@@ -19,7 +19,9 @@ class StoryTest(unittest.TestCase):
     def test_start_story_scaffolds(self):
         d = start_story(self.kb, "webapp", "Auth Token Refresh", "2026-06-05")
         self.assertTrue((d / "story.md").exists())
-        self.assertTrue((d / "sessions" / "01.md").exists())
+        # sessions/ exists but holds NO placeholder — handoffs are created by end_session
+        self.assertTrue((d / "sessions").is_dir())
+        self.assertFalse((d / "sessions" / "01.md").exists())
         meta, _ = parse_frontmatter((d / "story.md").read_text())
         self.assertEqual(meta["repo"], "webapp")
         self.assertEqual(meta["slug"], "auth-token-refresh")
@@ -32,6 +34,10 @@ class StoryTest(unittest.TestCase):
 
     def test_end_session_numbers_sequentially(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        # First handoff is 01.md (no placeholder pre-exists), next is 02.md
+        f1 = end_session(d, "State: first\n")
+        self.assertEqual(f1.name, "01.md")
+        self.assertIn("first", f1.read_text())
         f2 = end_session(d, "State: midway\nDone: x\nNext: y\nWatch out: z\n")
         self.assertEqual(f2.name, "02.md")
         self.assertIn("midway", f2.read_text())
