@@ -5,6 +5,8 @@ behind your work — decisions, rationale, and per-session handoffs — and surf
 the relevant pieces back to a future agent when it starts a related task, across
 all your repos.
 
+![AKT demo — capture a decision, then recall it across repos](demo/akt-demo.gif)
+
 The premise: a coding agent's biggest gap isn't the code, it's the **context** —
 why something was built the way it was, what was tried and rejected, what to watch
 out for. AKT makes capturing that nearly free, and — more importantly — makes it
