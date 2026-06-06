@@ -39,7 +39,7 @@ Three tiers: `sessions/` (transient) → `story.md` (durable, per-task) → `AGE
 
 ## Install
 
-Zero-install — clone and run as a module:
+Zero-install — clone and run as a module from the repo:
 
 ```bash
 git clone <this-repo> agent-knowledge-toolkit
@@ -47,11 +47,26 @@ cd agent-knowledge-toolkit
 python3 -m akt --help
 ```
 
+### Use it from any repo (recommended)
+
+Symlink the launcher onto your `PATH` and copy the slash commands into your global
+Claude Code commands directory. No packaging, no virtualenv — the launcher resolves
+the toolkit location automatically:
+
+```bash
+# from the toolkit repo root:
+ln -s "$PWD/bin/akt" ~/.local/bin/akt                 # `akt` works from any directory
+cp .claude/commands/{recall,start-story,end-session,finish-story}.md ~/.claude/commands/
+```
+
+(Ensure `~/.local/bin` is on your `PATH`.) After this, `akt …` and the `/recall`,
+`/start-story`, `/end-session`, `/finish-story` slash commands work in every repo.
+
 Initialize a knowledge base (a standalone git repo you keep wherever you like —
 git-backing it gives you history and cross-machine sync):
 
 ```bash
-python3 -m akt init ~/knowledge
+akt init ~/knowledge
 ```
 
 This scaffolds the knowledge base and records its path in `~/.claude/akt-config.md`
@@ -62,10 +77,10 @@ This scaffolds the knowledge base and records its path in `~/.claude/akt-config.
 ```bash
 # Start a story (one per feature/PR). Prints the story directory.
 # (--date is optional; it defaults to today. Pinned here so the example is reproducible.)
-STORY=$(python3 -m akt start-story webapp "Auth token refresh" --date 2026-06-05)
+STORY=$(akt start-story webapp "Auth token refresh" --date 2026-06-05)
 
 # At the end of a working session, write a handoff for the next agent (from stdin):
-python3 -m akt end-session "$STORY" <<'EOF'
+akt end-session "$STORY" <<'EOF'
 State: refactor done
 Done: moved refresh to lazy-on-401
 Next: add tests
@@ -73,7 +88,7 @@ Watch out: token clock skew
 EOF
 
 # When the work is done, distill the durable record and index it (from stdin):
-python3 -m akt finish-story "$STORY" --stdin <<'EOF'
+akt finish-story "$STORY" --stdin <<'EOF'
 ---
 repo: webapp
 slug: auth-token-refresh
@@ -91,13 +106,13 @@ Reauth storms gone; watch clock skew.
 EOF
 
 # Later, on a new task, surface relevant prior decisions:
-python3 -m akt recall "how do I refresh an auth token"
+akt recall "how do I refresh an auth token"
 # -> stories/webapp/2026-06-05-auth-token-refresh/story.md
 ```
 
 ## Commands
 
-### CLI (`python3 -m akt <command>`)
+### CLI (`akt <command>` — or `python3 -m akt` from the repo without the launcher)
 
 | Command | What it does |
 |---------|--------------|
