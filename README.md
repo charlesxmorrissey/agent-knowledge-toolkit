@@ -23,7 +23,7 @@ out for. AKT makes capturing that nearly free, and — more importantly — make
 
 > **Status: kernel MVP.** This is the portable core — capture + recall + continuity.
 > The learning protocol, planning/workflow toolkit, and plugin distribution are
-> designed but not yet built (see [Roadmap](#roadmap)).
+> designed but not yet built (see [Status & roadmap](#status--roadmap)).
 
 ## How it works
 
