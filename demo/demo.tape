@@ -1,11 +1,11 @@
-# AKT demo — renders a GIF of the capture → recall loop.
+# AKT demo — the practical payoff: recall surfaces past decisions across repos.
 #
-# Render with (from the repo root):
+# Render (from the repo root):
 #   brew install vhs        # https://github.com/charmbracelet/vhs
 #   vhs demo/demo.tape      # writes demo/akt-demo.gif
 #
-# Safe to run: it sets a throwaway $HOME, so it never touches your real
-# ~/knowledge base or ~/.claude config. Requires `akt` to be on your PATH.
+# Safe to run: it uses a throwaway $HOME, so it never touches your real
+# ~/knowledge base or ~/.claude config. Requires `akt` on your PATH.
 
 Output demo/akt-demo.gif
 
@@ -14,54 +14,62 @@ Require akt
 Set Shell "zsh"
 Set FontSize 18
 Set Width 1200
-Set Height 760
+Set Height 820
 Set Padding 20
 Set Theme "Dracula"
 Set TypingSpeed 35ms
 
-# --- sandbox setup (hidden): fresh HOME + pre-staged story body ---
+# --- hidden: sandbox + two stories you "captured weeks ago, in other repos" ---
 Hide
-Type "export HOME=$(mktemp -d) && cd $HOME" Enter
-Type "cat > body.md <<'EOF'" Enter
+Type "setopt interactive_comments" Enter
+Type "export HOME=$(mktemp -d) && cd $HOME && akt init ~/knowledge >/dev/null" Enter
+Type 'S=$(akt start-story api "Retry upstream calls" --date 2026-05-12)' Enter
+Type "akt finish-story $S --stdin >/dev/null <<'EOF'" Enter
 Type "---" Enter
-Type "repo: myapp" Enter
-Type "slug: add-auth-retry" Enter
-Type "date: 2026-06-10" Enter
-Type "summary: Retry auth on 401 with one token refresh before giving up" Enter
-Type "keys: auth, retry, token, 401, backoff" Enter
+Type "repo: api" Enter
+Type "slug: retry-upstream-calls" Enter
+Type "date: 2026-05-12" Enter
+Type "summary: Retry upstream calls with exponential backoff + jitter, cap 3 tries" Enter
+Type "keys: retry, backoff, jitter, upstream, api, timeout" Enter
 Type "---" Enter
 Type "## Problem" Enter
-Type "Transient 401s were dropping user sessions." Enter
+Type "Transient upstream failures cascaded; immediate retries made incidents worse." Enter
 Type "## Decisions" Enter
-Type "- Retry once after a token refresh on 401 — because most 401s were just expired tokens — rejected blanket retry-all" Enter
+Type "- Exponential backoff + jitter, max 3 attempts — because synchronized immediate retries hammered the upstream during outages — rejected fixed-interval retry" Enter
 Type "## Outcome" Enter
-Type "Session drops down ~90%." Enter
+Type "Retry storms gone; incident blast radius shrank." Enter
+Type "## Links" Enter
+Type "EOF" Enter
+Type 'S=$(akt start-story payments "Make charge retries safe" --date 2026-05-20)' Enter
+Type "akt finish-story $S --stdin >/dev/null <<'EOF'" Enter
+Type "---" Enter
+Type "repo: payments" Enter
+Type "slug: make-charge-retries-safe" Enter
+Type "date: 2026-05-20" Enter
+Type "summary: Require an Idempotency-Key on writes so retried requests never double-charge" Enter
+Type "keys: idempotency, retry, payments, writes, safety" Enter
+Type "---" Enter
+Type "## Problem" Enter
+Type "Network retries could submit the same charge twice." Enter
+Type "## Decisions" Enter
+Type "- Require Idempotency-Key on POSTs — because retries are unavoidable and must be safe — rejected dedupe-by-amount" Enter
+Type "## Outcome" Enter
+Type "Zero duplicate charges since rollout." Enter
 Type "## Links" Enter
 Type "EOF" Enter
 Type "clear" Enter
 Show
 
-Type "# 1. one-time: point AKT at a knowledge base" Enter
 Sleep 600ms
-Type "akt init ~/knowledge" Enter
-Sleep 1500ms
-
-Type "# 2. start a story in whatever repo you're working in" Enter
-Sleep 600ms
-Type 'STORY=$(akt start-story myapp "Add auth retry" --date 2026-06-10) && echo "$STORY"' Enter
-Sleep 1500ms
-
-Type "# 3. when the work wraps, capture the *why* (auto-commits + pushes)" Enter
-Sleep 600ms
-Type 'akt finish-story "$STORY" --stdin < body.md' Enter
-Sleep 1800ms
-
-Type "# 4. later — even from a DIFFERENT repo — recall it" Enter
-Sleep 600ms
-Type 'akt recall "how do we retry auth on a 401?"' Enter
-Sleep 2000ms
-
-Type "# the captured decision is right there:" Enter
-Sleep 600ms
-Type 'cat ~/knowledge/$(akt recall "retry auth 401" | head -1)' Enter
-Sleep 3500ms
+Type "# New day, working in the 'web' repo. Task: add retry logic to the API client." Enter
+Sleep 1400ms
+Type "# First — what have I already figured out about this, anywhere?" Enter
+Sleep 1400ms
+Type 'akt recall "retry api calls with backoff"' Enter
+Sleep 2600ms
+Type "# Two past decisions — from OTHER repos. Open the most relevant:" Enter
+Sleep 1400ms
+Type 'cat ~/knowledge/$(akt recall "retry api calls with backoff" | head -1)' Enter
+Sleep 4500ms
+Type "# the decision AND the why — so you build on it instead of relearning it." Enter
+Sleep 3000ms
