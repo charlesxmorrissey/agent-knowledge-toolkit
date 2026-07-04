@@ -2,12 +2,22 @@
 import argparse
 import sys
 from datetime import date as _date
+from pathlib import Path
 
 from akt import config
 from akt import story as story_mod
 from akt import recall as recall_mod
 from akt import index as index_mod
 from akt import init as init_mod
+from akt import gitkb
+
+
+def _warn_if_dirty(kb):
+    if gitkb.is_dirty(kb):
+        sys.stderr.write(
+            "⚠ knowledge base has uncommitted changes — a prior story "
+            "may not have been saved; run /finish-story or commit it\n"
+        )
 
 
 def _require_kb():
@@ -54,8 +64,10 @@ def main(argv=None):
         return 0
 
     if args.cmd == "start-story":
+        kb = _require_kb()
+        _warn_if_dirty(kb)
         d = args.date or _date.today().isoformat()
-        print(story_mod.start_story(_require_kb(), args.repo, args.title, d))
+        print(story_mod.start_story(kb, args.repo, args.title, d))
         return 0
 
     if args.cmd == "end-session":
@@ -64,12 +76,20 @@ def main(argv=None):
         return 0
 
     if args.cmd == "finish-story":
+        kb = _require_kb()
         body = sys.stdin.read() if args.stdin else None
-        print(story_mod.finish_story(_require_kb(), args.story_path, body))
+        line = story_mod.finish_story(kb, args.story_path, body)
+        print(line)
+        # Atomic capture: index + commit happen in one CLI invocation so the
+        # commit can't be left as a separate step the agent forgets to run.
+        sp = Path(args.story_path)
+        sys.stderr.write(gitkb.commit_kb(kb, "story: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0
 
     if args.cmd == "recall":
-        for entry in recall_mod.recall(_require_kb(), args.query, args.limit):
+        kb = _require_kb()
+        _warn_if_dirty(kb)
+        for entry in recall_mod.recall(kb, args.query, args.limit):
             print(entry["path"])
         return 0
 
