@@ -21,17 +21,13 @@ allowed-tools: Bash, Read
    ## Outcome
    ## Links
    ```
-3. Pipe it in; the CLI validates required sections + non-empty summary, then appends the INDEX.md line:
+3. Pipe it in. The CLI validates required sections + non-empty summary, appends the
+   INDEX.md line, **and commits the knowledge base** (pushing if a remote exists) in the
+   same invocation — so capture is atomic; there is no separate commit step to forget:
    ```bash
    akt finish-story <story_path> --stdin <<'EOF'
    <the full story.md content above>
    EOF
    ```
-4. Commit the knowledge base (`knowledge_base_path` from `~/.claude/akt-config.md`), then push if a remote is configured. Do not fail the flow when there is no remote or you're offline:
-   ```bash
-   git -C <kb> add -A
-   git -C <kb> commit -m "story: <repo>/<slug>"
-   git -C <kb> remote get-url origin >/dev/null 2>&1 \
-     && git -C <kb> push \
-     || echo "knowledge base committed locally (push skipped: no remote or offline)"
-   ```
+   The commit status is printed to stderr. It never fails the flow when there is no
+   remote or you're offline (the story is still committed locally).

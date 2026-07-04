@@ -114,7 +114,8 @@ Next: add tests
 Watch out: token clock skew
 EOF
 
-# When the work is done, distill the durable record and index it (from stdin):
+# When the work is done, distill the durable record, index it, and commit the
+# knowledge base (pushed if a remote exists) — all in this one call (from stdin):
 akt finish-story "$STORY" --stdin <<'EOF'
 ---
 repo: webapp
@@ -146,7 +147,7 @@ akt recall "how do I refresh an auth token"
 | `init <path>` | Create a knowledge base at `<path>` and record it in config |
 | `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path |
 | `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md` |
-| `finish-story <story_path> --stdin` | Validate + write the distilled `story.md` (from stdin) and append its `INDEX.md` line |
+| `finish-story <story_path> --stdin` | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
 | `recall "<query>" [--limit N]` | Print the most relevant story paths for a task (default 3) |
 | `reindex` | Rebuild `INDEX.md` from all `story.md` files |
 
@@ -191,7 +192,9 @@ python3 -m unittest discover -s tests
 - Kernel — `recall`, capture lifecycle (`start-story` / `end-session` / `finish-story`),
   `INDEX.md`, `reindex`, config, `init`.
 - `akt` launcher + global slash commands — use it from any repo.
-- `/finish-story` auto-commits **and pushes** the knowledge base.
+- `finish-story` commits **and pushes** the knowledge base in the same call — capture is
+  atomic, with no separate commit step to forget. `recall` / `start-story` warn (on stderr)
+  when the KB has uncommitted changes, so a half-saved story never rots silently.
 - Optional auto-recall/capture rule (`claude/akt-rule.md`) — the agent runs recall before
   a task and captures a story when work wraps, without you invoking anything.
 
