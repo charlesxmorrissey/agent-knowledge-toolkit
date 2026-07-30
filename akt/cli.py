@@ -20,6 +20,13 @@ def _warn_if_dirty(kb):
         )
 
 
+def _print_entry(entry):
+    # Path first on its own line (consumers parse paths), summary indented under it.
+    print(entry["path"])
+    if entry.get("summary"):
+        print("    " + entry["summary"])
+
+
 def _require_kb():
     kb = config.get("knowledge_base_path")
     if not kb:
@@ -47,9 +54,17 @@ def build_parser():
     pf.add_argument("story_path")
     pf.add_argument("--stdin", action="store_true", help="read distilled story.md body from stdin")
 
-    pr = sub.add_parser("recall", help="print ranked story paths for a query")
+    pu = sub.add_parser("update-story", help="append a dated update section (from stdin) and commit")
+    pu.add_argument("story_path")
+    pu.add_argument("--stdin", action="store_true", help="read the update body from stdin")
+    pu.add_argument("--date", default=None)
+
+    pr = sub.add_parser("recall", help="print ranked story paths (with summaries) for a query")
     pr.add_argument("query")
     pr.add_argument("--limit", type=int, default=3)
+
+    pl = sub.add_parser("latest", help="print the most recent story path for a repo")
+    pl.add_argument("repo")
 
     sub.add_parser("reindex", help="rebuild INDEX.md from all story.md files")
     return p
@@ -86,11 +101,29 @@ def main(argv=None):
         sys.stderr.write(gitkb.commit_kb(kb, "story: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0
 
+    if args.cmd == "update-story":
+        kb = _require_kb()
+        body = sys.stdin.read() if args.stdin else ""
+        d = args.date or _date.today().isoformat()
+        print(story_mod.update_story(args.story_path, body, d))
+        # Same atomic-capture rule as finish-story: append + commit in one invocation.
+        sp = Path(args.story_path)
+        sys.stderr.write(gitkb.commit_kb(kb, "story update: {}/{}".format(sp.parent.name, sp.name)) + "\n")
+        return 0
+
     if args.cmd == "recall":
         kb = _require_kb()
         _warn_if_dirty(kb)
         for entry in recall_mod.recall(kb, args.query, args.limit):
-            print(entry["path"])
+            _print_entry(entry)
+        return 0
+
+    if args.cmd == "latest":
+        kb = _require_kb()
+        _warn_if_dirty(kb)
+        entry = recall_mod.latest(kb, args.repo)
+        if entry:
+            _print_entry(entry)
         return 0
 
     if args.cmd == "reindex":

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from akt.frontmatter import parse_frontmatter
 from akt.index import read_index_lines, parse_index_line
-from akt.story import start_story, end_session, finish_story
+from akt.story import start_story, end_session, finish_story, update_story
 
 
 class StoryTest(unittest.TestCase):
@@ -54,6 +54,20 @@ class StoryTest(unittest.TestCase):
         lines = read_index_lines(self.kb)
         self.assertEqual(len(lines), 1)
         self.assertEqual(parse_index_line(lines[0])["summary"], "Lazy refresh on 401")
+
+    def test_update_story_appends_dated_section(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        f = update_story(d, "Switched to rotating refresh tokens.\n", "2026-06-06")
+        text = f.read_text()
+        self.assertIn("## Update — 2026-06-06", text)
+        self.assertTrue(text.endswith("Switched to rotating refresh tokens.\n"))
+
+    def test_update_story_rejects_missing_story_and_empty_body(self):
+        with self.assertRaises(FileNotFoundError):
+            update_story(self.kb / "stories" / "nope", "body", "2026-06-06")
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        with self.assertRaises(ValueError):
+            update_story(d, "  \n", "2026-06-06")
 
     def test_finish_story_rejects_missing_sections(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from akt.index import append_index_line, build_index_line
-from akt.recall import recall, tokenize
+from akt.recall import latest, recall, tokenize
 
 
 class RecallTest(unittest.TestCase):
@@ -33,6 +33,15 @@ class RecallTest(unittest.TestCase):
         slugs = [r["slug"] for r in results]
         self.assertIn("auth-token-refresh", slugs)
         self.assertNotIn("csv-export", slugs)
+
+    def test_latest_picks_newest_story_for_repo(self):
+        meta = {"repo": "webapp", "slug": "newer", "summary": "Newer story", "keys": "x"}
+        append_index_line(self.kb, build_index_line(meta, "stories/webapp/2026-07-01-newer/story.md"))
+        entry = latest(self.kb, "webapp")
+        self.assertEqual(entry["slug"], "newer")
+
+    def test_latest_none_for_unknown_repo(self):
+        self.assertIsNone(latest(self.kb, "nope"))
 
     def test_recall_respects_limit(self):
         results = recall(self.kb, "login token csv export retry", limit=2)
