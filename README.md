@@ -67,11 +67,11 @@ the toolkit location automatically:
 ```bash
 # from the toolkit repo root:
 ln -s "$PWD/bin/akt" ~/.local/bin/akt                 # `akt` works from any directory
-cp .claude/commands/{recall,start-story,end-session,finish-story}.md ~/.claude/commands/
+cp .claude/commands/{recall,start-story,end-session,update-story,finish-story}.md ~/.claude/commands/
 ```
 
 (Ensure `~/.local/bin` is on your `PATH`.) After this, `akt …` and the `/recall`,
-`/start-story`, `/end-session`, `/finish-story` slash commands work in every repo.
+`/start-story`, `/end-session`, `/update-story`, `/finish-story` slash commands work in every repo.
 
 ### Automatic recall & capture (optional)
 
@@ -133,9 +133,18 @@ Reauth storms gone; watch clock skew.
 ## Links
 EOF
 
+# The thread continues? Append a dated update (committed + pushed in the same call):
+akt update-story "$STORY" --stdin <<'EOF'
+Rotated refresh tokens after the pen-test finding; kept lazy-on-401.
+EOF
+
 # Later, on a new task, surface relevant prior decisions:
 akt recall "how do I refresh an auth token"
 # -> stories/webapp/2026-06-05-auth-token-refresh/story.md
+#        Moved refresh from cron to lazy-on-401 to stop thundering-herd reauth
+
+# Or resume an engagement without inventing a query:
+akt latest webapp
 ```
 
 ## Commands
@@ -148,7 +157,9 @@ akt recall "how do I refresh an auth token"
 | `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path |
 | `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md` |
 | `finish-story <story_path> --stdin` | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
-| `recall "<query>" [--limit N]` | Print the most relevant story paths for a task (default 3) |
+| `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread |
+| `recall "<query>" [--limit N]` | Print the most relevant story paths for a task (default 3), each with its summary indented beneath |
+| `latest <repo>` | Print the most recent story path (+ summary) for a repo — resume without inventing a query |
 | `reindex` | Rebuild `INDEX.md` from all `story.md` files |
 
 ### Slash commands (Claude Code)
@@ -157,6 +168,7 @@ akt recall "how do I refresh an auth token"
 
 - `/start-story` — begin a story for the current repo
 - `/end-session` — write a session handoff
+- `/update-story` — append a dated update to an open story and commit it
 - `/finish-story` — distill the story, index it, and commit + push the knowledge base
 - `/recall` — surface and judge relevant past stories before starting work
 
@@ -197,6 +209,9 @@ python3 -m unittest discover -s tests
   when the KB has uncommitted changes, so a half-saved story never rots silently.
 - Optional auto-recall/capture rule (`claude/akt-rule.md`) — the agent runs recall before
   a task and captures a story when work wraps, without you invoking anything.
+- Lessons from first heavy real-world use: `update-story` (mid-engagement appends, atomic
+  commit), `latest <repo>` (resume without inventing a query), recall output with summaries,
+  and a documented continue-vs-new-story convention.
 
 **Next, in build order (see `docs/superpowers/`):**
 1. **Learning protocol** — recurring patterns accrue evidence and graduate into

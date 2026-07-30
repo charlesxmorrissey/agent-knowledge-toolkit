@@ -52,6 +52,20 @@ def end_session(story_path, body):
     return f
 
 
+def update_story(story_path, body, date):
+    """Append a dated '## Update' section to an existing story.md."""
+    story_md = Path(story_path) / "story.md"
+    if not story_md.exists():
+        raise FileNotFoundError(str(story_md))
+    if not (body and body.strip()):
+        raise ValueError("update body is empty")
+    text = story_md.read_text()
+    story_md.write_text(
+        text.rstrip("\n") + "\n\n## Update — {}\n\n{}\n".format(date, body.strip())
+    )
+    return story_md
+
+
 def finish_story(kb_path, story_path, body=None):
     story_path = Path(story_path)
     story_md = story_path / "story.md"

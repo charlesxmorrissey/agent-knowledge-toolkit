@@ -40,17 +40,50 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("indexed", out)
 
-    def test_recall_prints_paths(self):
-        self._run(["init", str(self.kb)])
-        story = self.kb / "stories" / "webapp" / "2026-06-05-auth"
-        (story).mkdir(parents=True)
+    def _seed_story(self, date="2026-06-05", slug="auth", summary="token refresh"):
+        story = self.kb / "stories" / "webapp" / "{}-{}".format(date, slug)
+        story.mkdir(parents=True)
         (story / "story.md").write_text(
-            "---\nrepo: webapp\nslug: auth\nsummary: token refresh\nkeys: auth, token\n---\n## Problem\n"
+            "---\nrepo: webapp\nslug: {}\nsummary: {}\nkeys: auth, token\n---\n## Problem\n".format(slug, summary)
         )
+        return story
+
+    def test_recall_prints_paths_with_summaries(self):
+        self._run(["init", str(self.kb)])
+        self._seed_story()
         self._run(["reindex"])
         rc, out = self._run(["recall", "token auth"])
         self.assertEqual(rc, 0)
-        self.assertIn("stories/webapp/2026-06-05-auth/story.md", out)
+        lines = out.splitlines()
+        self.assertEqual(lines[0], "stories/webapp/2026-06-05-auth/story.md")
+        self.assertEqual(lines[1], "    token refresh")
+
+    def test_latest_prints_newest_story_for_repo(self):
+        self._run(["init", str(self.kb)])
+        self._seed_story(date="2026-06-05", slug="auth")
+        self._seed_story(date="2026-07-01", slug="newer", summary="newer work")
+        self._run(["reindex"])
+        rc, out = self._run(["latest", "webapp"])
+        self.assertEqual(rc, 0)
+        self.assertIn("stories/webapp/2026-07-01-newer/story.md", out)
+        rc, out = self._run(["latest", "nope"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, "")
+
+    def test_update_story_appends_from_stdin(self):
+        import io as _io
+        import sys as _sys
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        _sys.stdin = _io.StringIO("Rotated the refresh tokens.\n")
+        try:
+            rc, out = self._run(["update-story", str(story), "--stdin", "--date", "2026-06-06"])
+        finally:
+            _sys.stdin = _sys.__stdin__
+        self.assertEqual(rc, 0)
+        text = (story / "story.md").read_text()
+        self.assertIn("## Update — 2026-06-06", text)
+        self.assertIn("Rotated the refresh tokens.", text)
 
 
 if __name__ == "__main__":

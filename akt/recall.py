@@ -29,6 +29,19 @@ def score(query_tokens, entry):
     return sum(1 for qt in set(query_tokens) if qt in hay)
 
 
+def latest(kb_path, repo):
+    """Most recent story entry for a repo, or None.
+
+    Story dirs are date-prefixed (stories/<repo>/<YYYY-MM-DD>-<slug>/), so the
+    lexically greatest path is the newest — no date parsing needed.
+    """
+    entries = [
+        e for e in (parse_index_line(ln) for ln in read_index_lines(kb_path))
+        if e and e["repo"] == repo
+    ]
+    return max(entries, key=lambda e: e["path"]) if entries else None
+
+
 def recall(kb_path, query, limit=3):
     qtokens = tokenize(query)
     scored = []
