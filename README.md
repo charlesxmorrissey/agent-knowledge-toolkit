@@ -60,37 +60,30 @@ python3 -m akt --help
 
 ### Use it from any repo (recommended)
 
-Symlink the launcher onto your `PATH` and copy the slash commands into your global
-Claude Code commands directory. No packaging, no virtualenv — the launcher resolves
-the toolkit location automatically:
+One command symlinks everything into place — the `akt` launcher onto your `PATH`
+(`~/.local/bin/akt`), the slash commands into `~/.claude/commands/`, and the
+auto-recall rule as `~/.claude/AKT.md` (imported from `~/.claude/CLAUDE.md`):
 
 ```bash
-# from the toolkit repo root:
-ln -s "$PWD/bin/akt" ~/.local/bin/akt                 # `akt` works from any directory
-cp .claude/commands/{recall,start-story,end-session,update-story,finish-story}.md ~/.claude/commands/
+python3 -m akt install
 ```
 
-(Ensure `~/.local/bin` is on your `PATH`.) After this, `akt …` and the `/recall`,
-`/start-story`, `/end-session`, `/update-story`, `/finish-story` slash commands work in every repo.
+Because they're symlinks, `git pull` in this repo updates the global install —
+no re-copy step, ever. The installer is idempotent and never clobbers a real
+file (it warns and leaves it; remove the file and re-run to link). After this,
+`akt …` and the `/recall`, `/start-story`, `/end-session`, `/update-story`,
+`/finish-story` slash commands work in every repo, and the auto-recall rule
+tells the agent to recall relevant past stories before a non-trivial task and
+capture the story when meaningful work wraps up — a no-op when AKT isn't
+configured. (It's agent-instructed, not a hard hook, so it's smart and
+low-noise but not 100% deterministic.)
 
-### Automatic recall & capture (optional)
+To uninstall, remove the symlinks and the import line:
+`rm ~/.local/bin/akt ~/.claude/AKT.md ~/.claude/commands/{recall,start-story,end-session,update-story,finish-story}.md`
+and delete the `@AKT.md` line from `~/.claude/CLAUDE.md`.
 
-So you don't have to remember to run `/recall`, install the rule in
-[`claude/akt-rule.md`](claude/akt-rule.md) into your global Claude config. It tells the
-agent to recall relevant past stories before a non-trivial task and to capture the story
-when meaningful work wraps up — and it's a no-op when AKT isn't configured.
-
-```bash
-cp claude/akt-rule.md ~/.claude/AKT.md
-# then add an import line to ~/.claude/CLAUDE.md:
-printf '@AKT.md\n' >> ~/.claude/CLAUDE.md
-```
-
-It's agent-instructed (not a hard hook), so it's smart and low-noise but not 100%
-deterministic — the agent may skip recall on borderline-trivial work.
-
-Initialize a knowledge base (a standalone git repo you keep wherever you like —
-git-backing it gives you history and cross-machine sync):
+Finally, initialize a knowledge base (a standalone git repo you keep wherever
+you like — git-backing it gives you history and cross-machine sync):
 
 ```bash
 akt init ~/knowledge
@@ -153,6 +146,7 @@ akt latest webapp
 
 | Command | What it does |
 |---------|--------------|
+| `install` | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files) |
 | `init <path>` | Create a knowledge base at `<path>` and record it in config |
 | `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path |
 | `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md` |
@@ -212,6 +206,8 @@ python3 -m unittest discover -s tests
 - Lessons from first heavy real-world use: `update-story` (mid-engagement appends, atomic
   commit), `latest <repo>` (resume without inventing a query), recall output with summaries,
   and a documented continue-vs-new-story convention.
+- `akt install` — one-command, symlink-based setup: launcher, slash commands, rule file,
+  and the `@AKT.md` import, idempotently. `git pull` updates the global install; no sync step.
 
 **Next, in build order (see `docs/superpowers/`):**
 1. **Learning protocol** — recurring patterns accrue evidence and graduate into
@@ -220,8 +216,8 @@ python3 -m unittest discover -s tests
 2. **Planning / workflow toolkit** — swarm planning as a swappable default, plus
    PR and daily-status automations, all layered on the kernel via two touchpoints
    (`recall` before work, `finish-story` after).
-3. **Distribution** — a true one-command installer / Claude Code plugin (the launcher +
-   manual command copy is the current stopgap).
+3. **Distribution** — a Claude Code plugin for public distribution (`akt install`
+   covers single-user setup; the plugin is the answer for versioned, multi-user installs).
 
 ## Design docs
 

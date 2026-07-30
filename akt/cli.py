@@ -9,6 +9,7 @@ from akt import story as story_mod
 from akt import recall as recall_mod
 from akt import index as index_mod
 from akt import init as init_mod
+from akt import install as install_mod
 from akt import gitkb
 
 
@@ -41,6 +42,8 @@ def build_parser():
 
     pi = sub.add_parser("init", help="create a knowledge base and record it in config")
     pi.add_argument("path")
+
+    sub.add_parser("install", help="symlink launcher, slash commands, and rule into ~/.claude and ~/.local/bin")
 
     ps = sub.add_parser("start-story", help="scaffold a new story")
     ps.add_argument("repo")
@@ -77,6 +80,9 @@ def main(argv=None):
     if args.cmd == "init":
         print(init_mod.init_kb(args.path))
         return 0
+
+    if args.cmd == "install":
+        return install_mod.install()
 
     if args.cmd == "start-story":
         kb = _require_kb()

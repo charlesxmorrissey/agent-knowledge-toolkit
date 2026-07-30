@@ -1,7 +1,7 @@
 # `akt install` — one-command setup (design)
 
 **Date:** 2026-07-30
-**Status:** approved (brainstormed, not yet implemented)
+**Status:** implemented (`akt install`, akt/install.py)
 
 ## Problem
 
