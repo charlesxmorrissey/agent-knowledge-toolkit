@@ -70,6 +70,54 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out, "")
 
+    def _run_stdin(self, argv, text):
+        import io as _io
+        import sys as _sys
+        _sys.stdin = _io.StringIO(text)
+        try:
+            return self._run(argv)
+        finally:
+            _sys.stdin = _sys.__stdin__
+
+    def test_update_story_resolves_kb_relative_path(self):
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        rc, _ = self._run_stdin(
+            ["update-story", "stories/webapp/2026-06-05-auth", "--stdin", "--date", "2026-06-06"],
+            "KB-relative update.\n",
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("KB-relative update.", (story / "story.md").read_text())
+
+    def test_update_story_accepts_recall_style_story_md_path(self):
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        rc, _ = self._run_stdin(
+            ["update-story", "stories/webapp/2026-06-05-auth/story.md", "--stdin", "--date", "2026-06-06"],
+            "Recall-style path update.\n",
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("Recall-style path update.", (story / "story.md").read_text())
+
+    def test_finish_story_resolves_kb_relative_path(self):
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        body = (
+            "---\nrepo: webapp\nslug: auth\ndate: 2026-06-05\nsummary: token refresh\nkeys: auth\n---\n"
+            "## Problem\nx\n## Decisions\nx\n## Outcome\nx\n"
+        )
+        rc, out = self._run_stdin(
+            ["finish-story", "stories/webapp/2026-06-05-auth", "--stdin"], body
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("token refresh", (story / "story.md").read_text())
+
+    def test_missing_story_path_exits_cleanly(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as cm:
+            self._run_stdin(["update-story", "stories/nope/2026-01-01-gone", "--stdin"], "x\n")
+        self.assertEqual(cm.exception.code, 2)
+
     def test_update_story_appends_from_stdin(self):
         import io as _io
         import sys as _sys

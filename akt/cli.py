@@ -28,6 +28,28 @@ def _print_entry(entry):
         print("    " + entry["summary"])
 
 
+def _resolve_story_dir(kb, story_path):
+    """Resolve a story-path argument to an existing story directory.
+
+    Accepts the forms agents actually pass: absolute, KB-relative (as recall
+    prints), or CWD-relative — with or without a trailing /story.md.
+    Exits cleanly instead of letting a raw FileNotFoundError escape.
+    """
+    p = Path(story_path)
+    if p.name == "story.md":
+        p = p.parent
+    candidates = [p] if p.is_absolute() else ([Path(kb) / p, p] if kb else [p])
+    for c in candidates:
+        if c.is_dir():
+            return c
+    sys.stderr.write(
+        "story not found: {} (tried: {})\n".format(
+            story_path, ", ".join(str(c) for c in candidates)
+        )
+    )
+    sys.exit(2)
+
+
 def _require_kb():
     kb = config.get("knowledge_base_path")
     if not kb:
@@ -92,28 +114,29 @@ def main(argv=None):
         return 0
 
     if args.cmd == "end-session":
+        sp = _resolve_story_dir(config.get("knowledge_base_path"), args.story_path)
         body = "" if sys.stdin.isatty() else sys.stdin.read()
-        print(story_mod.end_session(args.story_path, body))
+        print(story_mod.end_session(sp, body))
         return 0
 
     if args.cmd == "finish-story":
         kb = _require_kb()
+        sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else None
-        line = story_mod.finish_story(kb, args.story_path, body)
+        line = story_mod.finish_story(kb, sp, body)
         print(line)
         # Atomic capture: index + commit happen in one CLI invocation so the
         # commit can't be left as a separate step the agent forgets to run.
-        sp = Path(args.story_path)
         sys.stderr.write(gitkb.commit_kb(kb, "story: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0
 
     if args.cmd == "update-story":
         kb = _require_kb()
+        sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else ""
         d = args.date or _date.today().isoformat()
-        print(story_mod.update_story(args.story_path, body, d))
+        print(story_mod.update_story(sp, body, d))
         # Same atomic-capture rule as finish-story: append + commit in one invocation.
-        sp = Path(args.story_path)
         sys.stderr.write(gitkb.commit_kb(kb, "story update: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0
 
