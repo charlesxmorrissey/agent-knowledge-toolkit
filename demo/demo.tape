@@ -67,7 +67,7 @@ Type "# First — what have I already figured out about this, anywhere?" Enter
 Sleep 1400ms
 Type 'akt recall "retry api calls with backoff"' Enter
 Sleep 2600ms
-Type "# Two past decisions — from OTHER repos. Open the most relevant:" Enter
+Type "# Two past decisions — from OTHER repos, summaries included. Open the most relevant:" Enter
 Sleep 1400ms
 Type 'cat ~/knowledge/$(akt recall "retry api calls with backoff" | head -1)' Enter
 Sleep 4500ms
