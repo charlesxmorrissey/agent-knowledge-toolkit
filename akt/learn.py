@@ -51,6 +51,10 @@ def read_learnings(kb_path):
         parsed = parse_learning_line(line)
         if parsed:
             entries.append(parsed)
+        elif line.strip().startswith("- ["):
+            # LEARNINGS.md is source of truth, not derived — a silently
+            # skipped line here gets permanently deleted on the next write.
+            raise ValueError("malformed ledger line: {}".format(line))
     return entries
 
 

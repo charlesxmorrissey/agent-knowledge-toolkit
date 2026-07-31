@@ -59,6 +59,13 @@ class LedgerCoreTest(unittest.TestCase):
         self.assertEqual(len(entries), 2)
         self.assertEqual({e["id"] for e in entries}, {"cm6-paste-appends", "other-lesson"})
 
+    def test_read_raises_on_malformed_bracket_line(self):
+        bad_line = "- [x] Rule | hits: NaN | status: candidate | last: 2026-07-30 | stories: a/b"
+        (self.kb / "LEARNINGS.md").write_text("# Learnings\n\n" + bad_line + "\n")
+        with self.assertRaises(ValueError) as cm:
+            read_learnings(self.kb)
+        self.assertIn(bad_line, str(cm.exception))
+
     def test_scope_single_repo_is_repo(self):
         self.assertEqual(scope(_entry()), "repo")
 

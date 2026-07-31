@@ -163,6 +163,16 @@ class CliTest(unittest.TestCase):
         self.assertIn("[a]", out)
         self.assertNotIn("[b]", out)
 
+    def test_learn_add_invalid_date_exits_2_and_no_write(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(["learn", "add", "x", "Rule", "--story", "a/2026-07-01-b",
+                       "--date", "07/30/2026"])
+        self.assertEqual(ctx.exception.code, 2)
+        ledger = self.kb / "LEARNINGS.md"
+        if ledger.exists():
+            self.assertNotIn("x", ledger.read_text())
+
     def test_learn_unknown_id_exits_2(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as ctx:

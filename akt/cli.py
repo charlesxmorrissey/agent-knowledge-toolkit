@@ -192,6 +192,7 @@ def main(argv=None):
         _warn_if_dirty(kb)
         today = getattr(args, "date", None) or _date.today().isoformat()
         try:
+            _date.fromisoformat(today)  # reject e.g. --date 07/30/2026 before it ever hits the ledger
             if args.learn_cmd == "add":
                 entry = learn_mod.add(kb, args.id, args.rule, args.story, today)
                 print(learn_mod.build_learning_line(entry))
