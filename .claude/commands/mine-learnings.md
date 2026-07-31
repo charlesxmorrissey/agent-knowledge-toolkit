@@ -10,7 +10,7 @@ Bootstrap or re-sweep the evidence ledger from the story corpus.
 1. Resolve the KB path from `knowledge_base_path` in `~/.claude/akt-config.md`.
 2. List every story, **oldest first** (dirs sort by date):
    ```bash
-   ls -d <kb>/stories/*/*/ | sort -t/ -k+7
+   ls -d <kb>/stories/*/*/ | awk -F/ '{print $(NF-1) "|" $0}' | sort | cut -d'|' -f2-
    ```
 3. For each story, read `story.md` and extract transferable lessons — gotchas,
    decisions, and rules that would help on a future task ("would this help in
