@@ -9,7 +9,7 @@
 
 # Agent Knowledge Toolkit
 
-A personal, git-backed knowledge base for coding agents. AKT captures the *why*
+A personal, git-backed knowledge base for coding agents. AKT captures the _why_
 behind your work — decisions, rationale, and per-session handoffs — and surfaces
 the relevant pieces back to a future agent when it starts a related task, across
 all your repos.
@@ -22,8 +22,8 @@ out for. AKT makes capturing that nearly free, and — more importantly — make
 **discoverable** at the moment a new task begins.
 
 > **Status: kernel MVP.** This is the portable core — capture + recall + continuity.
-> The learning protocol, planning/workflow toolkit, and plugin distribution are
-> designed but not yet built (see [Status & roadmap](#status--roadmap)).
+> The planning/workflow toolkit and plugin distribution are designed but not yet
+> built (see [Status & roadmap](#status--roadmap)).
 
 ## How it works
 
@@ -144,17 +144,28 @@ akt latest webapp
 
 ### CLI (`akt <command>` — or `python3 -m akt` from the repo without the launcher)
 
-| Command | What it does |
-|---------|--------------|
-| `install` | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files) |
-| `init <path>` | Create a knowledge base at `<path>` and record it in config |
-| `start-story <repo> "<title>" [--date YYYY-MM-DD]` | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path |
-| `end-session <story_path>` | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md` |
-| `finish-story <story_path> --stdin` | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
-| `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread |
-| `recall "<query>" [--limit N]` | Print the most relevant story paths for a task (default 3), each with its summary indented beneath |
-| `latest <repo>` | Print the most recent story path (+ summary) for a repo — resume without inventing a query |
-| `reindex` | Rebuild `INDEX.md` from all `story.md` files |
+| Command                                                 | What it does                                                                                                                                                     |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `install`                                               | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files)                           |
+| `init <path>`                                           | Create a knowledge base at `<path>` and record it in config                                                                                                      |
+| `start-story <repo> "<title>" [--date YYYY-MM-DD]`      | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path                                                                                   |
+| `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md`                                                                                  |
+| `finish-story <story_path> --stdin`                     | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
+| `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
+| `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
+| `latest <repo>`                                         | Print the most recent story path (+ summary) for a repo — resume without inventing a query                                                                       |
+| `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files                                                                                                                     |
+
+#### `akt learn` — evidence ledger
+
+| Subcommand                                       | What it does                                     |
+| ------------------------------------------------ | ------------------------------------------------ |
+| `add <id> "<rule>" --story <repo>/<date>-<slug>` | New candidate at hits 1                          |
+| `reinforce <id> --story <repo>/<date>-<slug>`    | Bump hits; prints `PROPOSE:` at threshold        |
+| `graduate <id>`                                  | Promote; global scope also writes KB `AGENTS.md` |
+| `wont <id>`                                      | Mark wont-graduate; stops proposals              |
+| `list [--status STATUS]`                         | Print the ledger                                 |
+| `prune`                                          | Print-only staleness report                      |
 
 ### Slash commands (Claude Code)
 
@@ -195,6 +206,7 @@ python3 -m unittest discover -s tests
 ## Status & roadmap
 
 **Shipped:**
+
 - Kernel — `recall`, capture lifecycle (`start-story` / `end-session` / `finish-story`),
   `INDEX.md`, `reindex`, config, `init`.
 - `akt` launcher + global slash commands — use it from any repo.
@@ -208,18 +220,21 @@ python3 -m unittest discover -s tests
   and a documented continue-vs-new-story convention.
 - `akt install` — one-command, symlink-based setup: launcher, slash commands, rule file,
   and the `@AKT.md` import, idempotently. `git pull` updates the global install; no sync step.
+- Learning protocol — recurring lessons accrue evidence in LEARNINGS.md via a capture-time
+  pass, and graduate (through a y/n gate, with provenance) into repo-local or global
+  AGENTS.md rules that auto-load in every session; /mine-learnings bootstraps the ledger
+  from existing stories.
 
 **Next, in build order (see `docs/superpowers/`):**
-1. **Learning protocol** — recurring patterns accrue evidence and graduate into
-   repo-local or global `AGENTS.md` rules, with provenance. (Pays off once you've
-   accumulated stories and patterns start repeating.)
-2. **Planning / workflow toolkit** — swarm planning as a swappable default, plus
+
+1. **Planning / workflow toolkit** — swarm planning as a swappable default, plus
    PR and daily-status automations, all layered on the kernel via two touchpoints
    (`recall` before work, `finish-story` after).
-3. **Distribution** — a Claude Code plugin for public distribution (`akt install`
+2. **Distribution** — a Claude Code plugin for public distribution (`akt install`
    covers single-user setup; the plugin is the answer for versioned, multi-user installs).
 
 ## Design docs
 
 - Design spec: [`docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md`](docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md)
 - Kernel implementation plan: [`docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md`](docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md)
+- Learning protocol design: [`docs/superpowers/specs/2026-07-30-akt-learning-protocol-design.md`](docs/superpowers/specs/2026-07-30-akt-learning-protocol-design.md)
