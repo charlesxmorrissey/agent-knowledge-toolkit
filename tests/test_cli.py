@@ -133,6 +133,51 @@ class CliTest(unittest.TestCase):
         self.assertIn("## Update — 2026-06-06", text)
         self.assertIn("Rotated the refresh tokens.", text)
 
+    def test_learn_add_reinforce_propose_graduate(self):
+        self._run(["init", str(self.kb)])
+        rc, out = self._run(["learn", "add", "cm6-paste", "Verify bundle bytes after paste",
+                             "--story", "heyflow/2026-07-01-a"])
+        self.assertEqual(rc, 0)
+        self.assertIn("hits: 1", out)
+
+        rc, out = self._run(["learn", "reinforce", "cm6-paste", "--story", "sumo/2026-07-02-b"])
+        self.assertEqual(rc, 0)
+        self.assertNotIn("PROPOSE:", out)
+
+        rc, out = self._run(["learn", "reinforce", "cm6-paste", "--story", "webapp/2026-07-03-c"])
+        self.assertEqual(rc, 0)
+        self.assertIn("PROPOSE: graduate 'cm6-paste' as GLOBAL", out)
+
+        rc, out = self._run(["learn", "graduate", "cm6-paste"])
+        self.assertEqual(rc, 0)
+        self.assertIn("<!-- akt: cm6-paste", out)
+        self.assertIn("- Verify bundle bytes after paste", (self.kb / "AGENTS.md").read_text())
+
+    def test_learn_list_filters_by_status(self):
+        self._run(["init", str(self.kb)])
+        self._run(["learn", "add", "a", "Rule A", "--story", "x/2026-07-01-a"])
+        self._run(["learn", "add", "b", "Rule B", "--story", "y/2026-07-01-b"])
+        self._run(["learn", "wont", "b"])
+        rc, out = self._run(["learn", "list", "--status", "candidate"])
+        self.assertEqual(rc, 0)
+        self.assertIn("[a]", out)
+        self.assertNotIn("[b]", out)
+
+    def test_learn_unknown_id_exits_2(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(["learn", "graduate", "nope"])
+        self.assertEqual(ctx.exception.code, 2)
+
+    def test_learn_prune_prints_sections(self):
+        self._run(["init", str(self.kb)])
+        self._run(["learn", "add", "old", "Old rule", "--story", "x/2026-01-01-a",
+                   "--date", "2026-01-01"])
+        rc, out = self._run(["learn", "prune"])
+        self.assertEqual(rc, 0)
+        self.assertIn("stale candidates", out)
+        self.assertIn("[old]", out)
+
 
 if __name__ == "__main__":
     unittest.main()
