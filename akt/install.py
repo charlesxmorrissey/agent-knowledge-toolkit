@@ -9,6 +9,8 @@ import os
 import sys
 from pathlib import Path
 
+from akt import config
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMPORT_LINE = "@AKT.md"
 
@@ -32,14 +34,14 @@ def _link(source, dest):
     print("linked {} -> {}".format(dest, source))
 
 
-def _ensure_import(claude_md):
+def _ensure_import(claude_md, line):
     text = claude_md.read_text() if claude_md.exists() else ""
-    if IMPORT_LINE in [line.strip() for line in text.splitlines()]:
+    if line in [ln.strip() for ln in text.splitlines()]:
         return
     claude_md.parent.mkdir(parents=True, exist_ok=True)
     prefix = text.rstrip("\n") + "\n" if text.strip() else ""
-    claude_md.write_text(prefix + IMPORT_LINE + "\n")
-    print("added {} import to {}".format(IMPORT_LINE, claude_md))
+    claude_md.write_text(prefix + line + "\n")
+    print("added {} import to {}".format(line, claude_md))
 
 
 def install(home=None):
@@ -49,7 +51,12 @@ def install(home=None):
     for cmd in sorted((REPO_ROOT / ".claude" / "commands").glob("*.md")):
         _link(cmd, home / ".claude" / "commands" / cmd.name)
     _link(REPO_ROOT / "claude" / "akt-rule.md", home / ".claude" / "AKT.md")
-    _ensure_import(home / ".claude" / "CLAUDE.md")
+    claude_md = home / ".claude" / "CLAUDE.md"
+    _ensure_import(claude_md, IMPORT_LINE)
+    kb = config.get("knowledge_base_path")
+    if kb:
+        # Graduated global rules auto-load in every session via this import.
+        _ensure_import(claude_md, "@{}/AGENTS.md".format(kb))
     if str(bin_dir) not in os.environ.get("PATH", "").split(os.pathsep):
         sys.stderr.write("⚠ {} is not on PATH — add it so `akt` works everywhere\n".format(bin_dir))
     return 0

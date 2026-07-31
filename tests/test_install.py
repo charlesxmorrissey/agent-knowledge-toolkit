@@ -1,9 +1,11 @@
 import io
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
+from akt import config
 from akt import install as install_mod
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -72,6 +74,33 @@ class InstallTest(unittest.TestCase):
         claude_md.write_text("# mine\n@AKT.md\n")
         self._run()
         self.assertEqual(claude_md.read_text().count("@AKT.md"), 1)
+
+    def test_install_adds_kb_agents_import(self):
+        cfg = Path(self.tmp.name) / "akt-config.md"
+        os.environ["AKT_CONFIG"] = str(cfg)
+        try:
+            kb = Path(self.tmp.name) / "knowledge"
+            config.set_value("knowledge_base_path", str(kb), cfg)
+            install_mod.install(home=self.home)
+            before = (self.home / ".claude" / "CLAUDE.md").read_text()
+            self.assertIn("@AKT.md", before)
+            self.assertIn("@{}/AGENTS.md".format(kb), before)
+            install_mod.install(home=self.home)  # idempotent
+            after = (self.home / ".claude" / "CLAUDE.md").read_text()
+            self.assertEqual(before, after)
+            self.assertEqual(after.count("@{}/AGENTS.md".format(kb)), 1)
+        finally:
+            os.environ.pop("AKT_CONFIG", None)
+
+    def test_install_without_kb_skips_agents_import(self):
+        os.environ["AKT_CONFIG"] = str(Path(self.tmp.name) / "missing-config.md")
+        try:
+            install_mod.install(home=self.home)
+            text = (self.home / ".claude" / "CLAUDE.md").read_text()
+            self.assertIn("@AKT.md", text)
+            self.assertNotIn("AGENTS.md", text)
+        finally:
+            os.environ.pop("AKT_CONFIG", None)
 
 
 if __name__ == "__main__":
