@@ -28,6 +28,13 @@ Watch out:
 """
 
 _REQUIRED_SECTIONS = ["## Problem", "## Decisions", "## Outcome"]
+_REQUIRED_META = ["repo", "slug", "summary", "keys"]
+
+
+def _validate_meta(meta):
+    missing = [k for k in _REQUIRED_META if not meta.get(k, "").strip()]
+    if missing:
+        raise ValueError("story.md frontmatter missing: {}".format(missing))
 
 
 def start_story(kb_path, repo, title, date):
@@ -60,6 +67,8 @@ def update_story(story_path, body, date):
     if not (body and body.strip()):
         raise ValueError("update body is empty")
     text = story_md.read_text()
+    meta, _ = parse_frontmatter(text)
+    _validate_meta(meta)
     story_md.write_text(
         text.rstrip("\n") + "\n\n## Update — {}\n\n{}\n".format(date, body.strip())
     )
@@ -76,8 +85,7 @@ def finish_story(kb_path, story_path, body=None):
     if missing:
         raise ValueError("story.md missing sections: {}".format(missing))
     meta, _ = parse_frontmatter(text)
-    if not meta.get("summary"):
-        raise ValueError("story.md frontmatter missing 'summary'")
+    _validate_meta(meta)
     line = build_index_line(meta, rel_to_kb(kb_path, story_md))
     append_index_line(kb_path, line)
     return line

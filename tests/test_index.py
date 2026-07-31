@@ -111,6 +111,21 @@ class IndexTest(unittest.TestCase):
         self.assertTrue(text.endswith("\n"), "non-empty index must end with a single newline")
         self.assertIn(line, text)
 
+    def test_append_dedupes_malformed_lines_by_path(self):
+        # Legacy lines with empty repo/slug fail the parse regex; dedupe must
+        # still match them on the trailing path field so they can't accumulate.
+        p = "stories/heyflow/2026-07-29-overnight-batch/story.md"
+        malformed = "- [/] Overnight batch | keys:  | " + p
+        append_index_line(self.kb, malformed)
+        append_index_line(self.kb, malformed)
+        good = build_index_line(
+            {"repo": "heyflow", "slug": "overnight-batch",
+             "summary": "Overnight batch", "keys": "heyflow"}, p)
+        append_index_line(self.kb, good)
+        lines = read_index_lines(self.kb)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0], good)
+
 
 if __name__ == "__main__":
     unittest.main()
