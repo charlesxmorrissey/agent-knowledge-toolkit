@@ -57,6 +57,13 @@ class StoryTest(unittest.TestCase):
 
     def test_update_story_appends_dated_section(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        # Initialize the story with required frontmatter before updating
+        story_md = d / "story.md"
+        story_md.write_text(
+            "---\nrepo: webapp\nslug: auth\ndate: 2026-06-05\n"
+            "summary: Lazy refresh on 401\nkeys: auth, token\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        )
         f = update_story(d, "Switched to rotating refresh tokens.\n", "2026-06-06")
         text = f.read_text()
         self.assertIn("## Update — 2026-06-06", text)
@@ -80,6 +87,27 @@ class StoryTest(unittest.TestCase):
         bad = "---\nrepo: webapp\nslug: auth\nsummary:\nkeys: k\n---\n## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
         with self.assertRaises(ValueError):
             finish_story(self.kb, d, bad)
+
+    def test_finish_story_rejects_empty_repo_slug_keys(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        for missing in ("repo", "slug", "keys"):
+            meta = {"repo": "webapp", "slug": "auth", "date": "2026-06-05",
+                    "summary": "s", "keys": "a, b"}
+            meta[missing] = ""
+            bad = (
+                "---\n" + "\n".join("{}: {}".format(k, v) for k, v in meta.items()) + "\n---\n"
+                "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+            )
+            with self.assertRaises(ValueError, msg=missing):
+                finish_story(self.kb, d, bad)
+
+    def test_update_story_rejects_incomplete_frontmatter(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        (d / "story.md").write_text(
+            "---\nsummary: legacy story with no repo/slug/keys\n---\n## Problem\nx\n"
+        )
+        with self.assertRaises(ValueError):
+            update_story(d, "new info", "2026-07-30")
 
 
 if __name__ == "__main__":

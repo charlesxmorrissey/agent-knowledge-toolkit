@@ -51,12 +51,18 @@ def write_index(kb_path, lines):
         _index_file(kb_path).write_text(_HEADER)
 
 
+def _line_path(line):
+    """Dedupe key: the final `| <path>` field. Works even for legacy lines the
+    parse regex rejects (e.g. empty repo/slug), so they can't accumulate."""
+    line = line.strip()
+    return line.rsplit(" | ", 1)[-1] if " | " in line else None
+
+
 def append_index_line(kb_path, line):
-    new_entry = parse_index_line(line)
+    new_path = _line_path(line)
     kept = []
     for existing in read_index_lines(kb_path):
-        parsed = parse_index_line(existing)
-        if parsed and new_entry and parsed["path"] == new_entry["path"]:
+        if new_path and _line_path(existing) == new_path:
             continue
         kept.append(existing)
     kept.append(line)
