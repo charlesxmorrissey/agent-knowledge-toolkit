@@ -11,6 +11,7 @@ from akt import index as index_mod
 from akt import init as init_mod
 from akt import install as install_mod
 from akt import gitkb
+from akt import learn as learn_mod
 
 
 def _warn_if_dirty(kb):
@@ -92,6 +93,32 @@ def build_parser():
     pl.add_argument("repo")
 
     sub.add_parser("reindex", help="rebuild INDEX.md from all story.md files")
+
+    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/graduate/wont/list/prune")
+    lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
+
+    la = lsub.add_parser("add", help="new candidate at hits 1")
+    la.add_argument("id")
+    la.add_argument("rule")
+    la.add_argument("--story", required=True, help="<repo>/<date>-<slug>")
+    la.add_argument("--date", default=None)
+
+    lr = lsub.add_parser("reinforce", help="bump hits; prints PROPOSE: at threshold")
+    lr.add_argument("id")
+    lr.add_argument("--story", required=True)
+    lr.add_argument("--date", default=None)
+
+    lg = lsub.add_parser("graduate", help="promote; global scope also writes KB AGENTS.md")
+    lg.add_argument("id")
+
+    lw = lsub.add_parser("wont", help="mark wont-graduate; stops proposals")
+    lw.add_argument("id")
+
+    ll = lsub.add_parser("list", help="print the ledger")
+    ll.add_argument("--status", default=None, choices=learn_mod.STATUSES)
+
+    lsub.add_parser("prune", help="print-only staleness report")
+
     return p
 
 
@@ -158,6 +185,52 @@ def main(argv=None):
     if args.cmd == "reindex":
         lines = index_mod.reindex(_require_kb())
         print("{} stories indexed".format(len(lines)))
+        return 0
+
+    if args.cmd == "learn":
+        kb = _require_kb()
+        _warn_if_dirty(kb)
+        today = getattr(args, "date", None) or _date.today().isoformat()
+        try:
+            _date.fromisoformat(today)  # reject e.g. --date 07/30/2026 before it ever hits the ledger
+            if args.learn_cmd == "add":
+                entry = learn_mod.add(kb, args.id, args.rule, args.story, today)
+                print(learn_mod.build_learning_line(entry))
+                sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(args.id)) + "\n")
+            elif args.learn_cmd == "reinforce":
+                threshold = int(config.get("learn_threshold") or 3)
+                entry, proposal = learn_mod.reinforce(kb, args.id, args.story, today, threshold)
+                print(learn_mod.build_learning_line(entry))
+                if proposal:
+                    print(proposal)
+                sys.stderr.write(gitkb.commit_kb(kb, "learn: reinforce {}".format(args.id)) + "\n")
+            elif args.learn_cmd == "graduate":
+                entry, block = learn_mod.graduate(kb, args.id)
+                print(block)
+                if entry["status"] == "graduated-repo":
+                    print("(repo-local: append the block above to that repo's AGENTS.md/CLAUDE.md and commit it with the work)")
+                sys.stderr.write(gitkb.commit_kb(kb, "learn: graduate {}".format(args.id)) + "\n")
+            elif args.learn_cmd == "wont":
+                entry = learn_mod.wont(kb, args.id)
+                print(learn_mod.build_learning_line(entry))
+                sys.stderr.write(gitkb.commit_kb(kb, "learn: wont-graduate {}".format(args.id)) + "\n")
+            elif args.learn_cmd == "list":
+                for entry in learn_mod.read_learnings(kb):
+                    if args.status and entry["status"] != args.status:
+                        continue
+                    print(learn_mod.build_learning_line(entry))
+            elif args.learn_cmd == "prune":
+                cutoff = int(config.get("prune_days") or 90)
+                stale_c, stale_g = learn_mod.prune_report(kb, today, cutoff)
+                print("stale candidates (last reinforced > {} days ago):".format(cutoff))
+                for entry in stale_c:
+                    print("  " + learn_mod.build_learning_line(entry))
+                print("graduated rules ripe for demotion review:")
+                for entry in stale_g:
+                    print("  " + learn_mod.build_learning_line(entry))
+        except ValueError as err:
+            sys.stderr.write(str(err) + "\n")
+            sys.exit(2)
         return 0
 
     return 1
