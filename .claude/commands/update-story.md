@@ -31,7 +31,7 @@ continue-vs-new convention in the AKT rule).
      `akt learn add <kebab-id> "<rule as one instruction sentence, no '|'>" --story <repo>/<date>-<slug>`.
    - If any command printed a `PROPOSE:` line, relay it to the user verbatim
      and act on their answer: `akt learn graduate <id>` (for a REPO-LOCAL
-     proposal, also append the printed rule block to _this_ repo's
+     proposal, also append the printed rule block to *this* repo's
      `AGENTS.md`/`CLAUDE.md` and commit it with the work) or `akt learn wont <id>`.
    - Project-specific quirks with no transfer value get no entry. Skip the
      pass entirely if `akt` reports no ledger and no KB.
