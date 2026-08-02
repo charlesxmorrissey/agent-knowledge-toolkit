@@ -10,8 +10,8 @@ Layer 2 of the build order in
 
 The deferral condition ("until stories accumulate and patterns repeat") is met:
 the KB holds ~30 stories across 8 repos, with visibly recurring lessons —
-CodeMirror-6 paste gotchas across 3+ stories, Formcrafts `values()` prefill
-across 3 repos, HeyFlow shadow-root blindness across 4+ stories in one repo.
+CodeMirror-6 paste gotchas across 3+ stories, a form-library prefill quirk
+across 3 repos, shadow-root blindness across 4+ stories in one repo.
 
 ## Decisions (settled during brainstorm)
 
@@ -48,7 +48,7 @@ hits and statuses cannot be rebuilt from stories.
 
 One entry per candidate. Managed by `akt learn` — do not hand-edit.
 
-- [cm6-paste-appends] Verify live bundle bytes after CodeMirror-6 paste — paste can silently APPEND instead of replace | hits: 3 | status: candidate | last: 2026-07-30 | stories: heyflow/2026-07-29-loader-interstitials-button-system-and-pronoun-case-fix-overnight-figma-batch, heyflow/2026-07-29-dead-end-conf-homepage-link-styled-as-filled-button, heyflow/2026-07-27-capture-method-webform-constant-and-the-restricted-picklist-probe
+- [cm6-paste-appends] Verify live bundle bytes after CodeMirror-6 paste — paste can silently APPEND instead of replace | hits: 3 | status: candidate | last: 2026-07-30 | stories: webapp/2026-07-29-editor-batch-of-ui-fixes, webapp/2026-07-29-confirmation-page-link-fix, webapp/2026-07-27-webform-field-constant-probe
 ```
 
 Per entry:
@@ -146,7 +146,7 @@ repo-local):
 
 ```
 - Verify live bundle bytes after CodeMirror-6 paste — paste can silently APPEND instead of replace.
-  <!-- akt: cm6-paste-appends | 3 hits | heyflow/2026-07-29-loader-interstitials-button-system-and-pronoun-case-fix-overnight-figma-batch, heyflow/2026-07-27-capture-method-webform-constant-and-the-restricted-picklist-probe -->
+  <!-- akt: cm6-paste-appends | 3 hits | webapp/2026-07-29-editor-batch-of-ui-fixes, webapp/2026-07-27-webform-field-constant-probe -->
 ```
 
 Rule text is what agents read; provenance rides in an HTML comment —

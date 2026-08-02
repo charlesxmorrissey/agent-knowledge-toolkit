@@ -136,11 +136,11 @@ class CliTest(unittest.TestCase):
     def test_learn_add_reinforce_propose_graduate(self):
         self._run(["init", str(self.kb)])
         rc, out = self._run(["learn", "add", "cm6-paste", "Verify bundle bytes after paste",
-                             "--story", "heyflow/2026-07-01-a"])
+                             "--story", "webapp/2026-07-01-a"])
         self.assertEqual(rc, 0)
         self.assertIn("hits: 1", out)
 
-        rc, out = self._run(["learn", "reinforce", "cm6-paste", "--story", "sumo/2026-07-02-b"])
+        rc, out = self._run(["learn", "reinforce", "cm6-paste", "--story", "shop/2026-07-02-b"])
         self.assertEqual(rc, 0)
         self.assertNotIn("PROPOSE:", out)
 
