@@ -19,7 +19,7 @@ Capture it so the decision is recorded for next time:
 
 1. If a story isn't already open, run `akt start-story <repo> "<short title>"` (`<repo>` = basename of the repo root).
 2. Distill the work into `story.md` and index it via `akt finish-story <story_path> --stdin`, including the **key decision → because → rejected alternative**. The finish-story flow commits (and pushes, if a remote is set) the knowledge base.
-3. Learnings pass: run `akt learn list --status candidate` and compare this story's transferable lessons — matches get `akt learn reinforce <id> --story <repo>/<date>-<slug>`, new ones get `akt learn add`. Relay any `PROPOSE:` line to the user verbatim and act on their answer (`akt learn graduate <id>` / `akt learn wont <id>`); a REPO-LOCAL graduation also means appending the printed rule block to this repo's `AGENTS.md`/`CLAUDE.md` and committing it with the work.
+3. Learnings pass: run `akt learn list --status candidate` and compare this story's transferable lessons — matches get `akt learn reinforce <id> --story <repo>/<date>-<slug>`, new ones get `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any `PROPOSE:` line to the user verbatim and act on their answer (`akt learn graduate <id>` / `akt learn wont <id>`); a REPO-LOCAL graduation also means appending the printed rule block to this repo's `AGENTS.md`/`CLAUDE.md` and committing it with the work.
 
 Skip capture for trivial/throwaway edits.
 

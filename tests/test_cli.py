@@ -112,6 +112,19 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("token refresh", (story / "story.md").read_text())
 
+    def test_finish_story_resolves_unprefixed_path(self):
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        body = (
+            "---\nrepo: webapp\nslug: auth\ndate: 2026-06-05\nsummary: token refresh\nkeys: auth\n---\n"
+            "## Problem\nx\n## Decisions\nx\n## Outcome\nx\n"
+        )
+        rc, _ = self._run_stdin(
+            ["finish-story", "webapp/2026-06-05-auth", "--stdin"], body
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("token refresh", (story / "story.md").read_text())
+
     def test_missing_story_path_exits_cleanly(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as cm:
@@ -152,6 +165,31 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("<!-- akt: cm6-paste", out)
         self.assertIn("- Verify bundle bytes after paste", (self.kb / "AGENTS.md").read_text())
+
+    def test_learn_story_accepts_recall_style_path(self):
+        self._run(["init", str(self.kb)])
+        rc, out = self._run(["learn", "add", "x", "Rule",
+                             "--story", "stories/webapp/2026-07-01-a/story.md"])
+        self.assertEqual(rc, 0)
+        self.assertIn("stories: webapp/2026-07-01-a", out)
+        rc, out = self._run(["learn", "reinforce", "x",
+                             "--story", "stories/shop/2026-07-02-b"])
+        self.assertEqual(rc, 0)
+        self.assertIn("shop/2026-07-02-b", out)
+        self.assertNotIn("stories/shop", out)
+
+    def test_learn_add_accepts_flag_aliases(self):
+        self._run(["init", str(self.kb)])
+        rc, out = self._run(["learn", "add", "--id", "flagged", "--rule", "Rule via flags",
+                             "--story", "webapp/2026-07-01-a"])
+        self.assertEqual(rc, 0)
+        self.assertIn("[flagged] Rule via flags", out)
+
+    def test_learn_add_missing_rule_exits_2(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(["learn", "add", "only-id", "--story", "webapp/2026-07-01-a"])
+        self.assertEqual(ctx.exception.code, 2)
 
     def test_learn_list_filters_by_status(self):
         self._run(["init", str(self.kb)])

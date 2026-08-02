@@ -39,7 +39,14 @@ def _resolve_story_dir(kb, story_path):
     p = Path(story_path)
     if p.name == "story.md":
         p = p.parent
-    candidates = [p] if p.is_absolute() else ([Path(kb) / p, p] if kb else [p])
+    if p.is_absolute() or not kb:
+        candidates = [p]
+    else:
+        # Accept both <repo>/<date>-<slug> and the stories/-prefixed form
+        # recall prints, so either can be copy-pasted (issue #21).
+        candidates = [Path(kb) / p, p]
+        if p.parts and p.parts[0] != "stories":
+            candidates.insert(1, Path(kb) / "stories" / p)
     for c in candidates:
         if c.is_dir():
             return c
@@ -49,6 +56,17 @@ def _resolve_story_dir(kb, story_path):
         )
     )
     sys.exit(2)
+
+
+def _normalize_learn_story(s):
+    """Ledger stories are <repo>/<date>-<slug>; also accept the
+    stories/-prefixed (and /story.md-suffixed) form recall prints (issue #21)."""
+    s = s.strip().strip("/")
+    if s.endswith("/story.md"):
+        s = s[: -len("/story.md")]
+    if s.startswith("stories/"):
+        s = s[len("stories/"):]
+    return s
 
 
 def _require_kb():
@@ -98,8 +116,12 @@ def build_parser():
     lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
 
     la = lsub.add_parser("add", help="new candidate at hits 1")
-    la.add_argument("id")
-    la.add_argument("rule")
+    # Positionals stay; --id/--rule are aliases agents guess from the sibling
+    # verbs' flag style (issue #22).
+    la.add_argument("id", nargs="?", default=None)
+    la.add_argument("rule", nargs="?", default=None)
+    la.add_argument("--id", dest="id_opt", help="alias for the positional id")
+    la.add_argument("--rule", "--text", dest="rule_opt", help="alias for the positional rule")
     la.add_argument("--story", required=True, help="<repo>/<date>-<slug>")
     la.add_argument("--date", default=None)
 
@@ -194,12 +216,21 @@ def main(argv=None):
         try:
             _date.fromisoformat(today)  # reject e.g. --date 07/30/2026 before it ever hits the ledger
             if args.learn_cmd == "add":
-                entry = learn_mod.add(kb, args.id, args.rule, args.story, today)
+                learn_id = args.id_opt or args.id
+                rule = args.rule_opt or args.rule
+                if not (learn_id and rule):
+                    sys.stderr.write(
+                        'usage: akt learn add <id> "<rule>" --story <repo>/<date>-<slug>\n'
+                    )
+                    sys.exit(2)
+                entry = learn_mod.add(kb, learn_id, rule,
+                                      _normalize_learn_story(args.story), today)
                 print(learn_mod.build_learning_line(entry))
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(args.id)) + "\n")
             elif args.learn_cmd == "reinforce":
                 threshold = int(config.get("learn_threshold") or 3)
-                entry, proposal = learn_mod.reinforce(kb, args.id, args.story, today, threshold)
+                entry, proposal = learn_mod.reinforce(
+                    kb, args.id, _normalize_learn_story(args.story), today, threshold)
                 print(learn_mod.build_learning_line(entry))
                 if proposal:
                     print(proposal)
