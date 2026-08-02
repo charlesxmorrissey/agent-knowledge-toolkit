@@ -179,11 +179,18 @@ class CliTest(unittest.TestCase):
         self.assertNotIn("stories/shop", out)
 
     def test_learn_add_accepts_flag_aliases(self):
+        import subprocess
         self._run(["init", str(self.kb)])
+        subprocess.run(["git", "-C", str(self.kb), "init", "-q"], check=True)
         rc, out = self._run(["learn", "add", "--id", "flagged", "--rule", "Rule via flags",
                              "--story", "webapp/2026-07-01-a"])
         self.assertEqual(rc, 0)
         self.assertIn("[flagged] Rule via flags", out)
+        # Regression: the KB commit message must use the merged id, not the
+        # empty positional ("learn: add None").
+        msg = subprocess.run(["git", "-C", str(self.kb), "log", "-1", "--format=%s"],
+                             capture_output=True, text=True).stdout
+        self.assertIn("learn: add flagged", msg)
 
     def test_learn_add_missing_rule_exits_2(self):
         self._run(["init", str(self.kb)])

@@ -226,7 +226,7 @@ def main(argv=None):
                 entry = learn_mod.add(kb, learn_id, rule,
                                       _normalize_learn_story(args.story), today)
                 print(learn_mod.build_learning_line(entry))
-                sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(args.id)) + "\n")
+                sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(learn_id)) + "\n")
             elif args.learn_cmd == "reinforce":
                 threshold = int(config.get("learn_threshold") or 3)
                 entry, proposal = learn_mod.reinforce(
