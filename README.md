@@ -94,21 +94,38 @@ This scaffolds the knowledge base and records its path in `~/.claude/akt-config.
 
 ## Quick start
 
+### If you use Claude Code — you're already done
+
+With `akt install` and `akt init` run (above), the agent drives the whole
+lifecycle itself:
+
+1. **You start a task** → the agent recalls relevant past stories and reads
+   them before writing code.
+2. **You ship a feature/PR** → the agent distills what was decided (and why)
+   into a story and commits it to the knowledge base.
+
+Just work normally; the knowledge base accrues as a byproduct. You can also
+invoke any step by hand with the slash commands (`/recall`, `/start-story`,
+`/finish-story`, …) — see [Slash commands](#slash-commands-claude-code).
+
+### The CLI underneath
+
+The slash commands wrap a plain CLI — use it directly with other agents,
+scripts, or by hand. A story's life, start to payoff:
+
 ```bash
-# Start a story (one per feature/PR). Prints the story directory.
-# (--date is optional; it defaults to today. Pinned here so the example is reproducible.)
+# 1. Start a story (one per feature/PR). Prints the story directory.
 STORY=$(akt start-story webapp "Auth token refresh" --date 2026-06-05)
 
-# At the end of a working session, write a handoff for the next agent (from stdin):
+# 2. Stopping mid-story? Leave a handoff for the next session:
 akt end-session "$STORY" <<'EOF'
-State: refactor done
 Done: moved refresh to lazy-on-401
 Next: add tests
 Watch out: token clock skew
 EOF
 
-# When the work is done, distill the durable record, index it, and commit the
-# knowledge base (pushed if a remote exists) — all in this one call (from stdin):
+# 3. Work done — write the distilled record, index it, and commit (+ push)
+#    the knowledge base, all in one call:
 akt finish-story "$STORY" --stdin <<'EOF'
 ---
 repo: webapp
@@ -123,22 +140,18 @@ Cron-based refresh caused thundering-herd reauth.
 - Lazy refresh on 401 — because cron drift synchronized clients — rejected fixed-interval cron
 ## Outcome
 Reauth storms gone; watch clock skew.
-## Links
 EOF
 
-# The thread continues? Append a dated update (committed + pushed in the same call):
-akt update-story "$STORY" --stdin <<'EOF'
-Rotated refresh tokens after the pen-test finding; kept lazy-on-401.
-EOF
-
-# Later, on a new task, surface relevant prior decisions:
+# 4. Weeks later, on a related task — the payoff:
 akt recall "how do I refresh an auth token"
 # -> stories/webapp/2026-06-05-auth-token-refresh/story.md
 #        Moved refresh from cron to lazy-on-401 to stop thundering-herd reauth
-
-# Or resume an engagement without inventing a query:
-akt latest webapp
 ```
+
+Two more you'll want eventually: `akt update-story "$STORY" --stdin` appends a
+dated update when the same thread continues, and `akt latest webapp` resumes
+the most recent story for a repo without inventing a query. (`--date` defaults
+to today; it's pinned above only so the paths in the example line up.)
 
 ## Commands
 
