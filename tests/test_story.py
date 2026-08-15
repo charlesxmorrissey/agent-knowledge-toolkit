@@ -101,13 +101,36 @@ class StoryTest(unittest.TestCase):
             with self.assertRaises(ValueError, msg=missing):
                 finish_story(self.kb, d, bad)
 
-    def test_update_story_rejects_incomplete_frontmatter(self):
+    def test_update_story_accepts_fresh_skeleton(self):
+        # issue #23: start-story then update-story is the natural flow and
+        # must work even though the skeleton's summary/keys are still empty.
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
-        (d / "story.md").write_text(
-            "---\nsummary: legacy story with no repo/slug/keys\n---\n## Problem\nx\n"
-        )
+        f = update_story(d, "First findings.\n", "2026-06-05")
+        self.assertIn("## Update — 2026-06-05", f.read_text())
+
+    def test_finish_story_bad_body_keeps_skeleton(self):
+        # issue #26: validation must run BEFORE the write, so a body that
+        # fails validation leaves the skeleton untouched.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        before = (d / "story.md").read_text()
         with self.assertRaises(ValueError):
-            update_story(d, "new info", "2026-07-30")
+            finish_story(self.kb, d, "no frontmatter, no sections")
+        self.assertEqual((d / "story.md").read_text(), before)
+
+    def test_finish_story_merges_skeleton_frontmatter(self):
+        # issue #26: repo/slug/date come from the skeleton when the body's
+        # frontmatter only carries summary/keys.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = (
+            "---\nsummary: Lazy refresh on 401\nkeys: auth, token\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        )
+        line = finish_story(self.kb, d, body)
+        self.assertIn("[webapp/auth]", line)
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["repo"], "webapp")
+        self.assertEqual(meta["date"], "2026-06-05")
+        self.assertEqual(meta["summary"], "Lazy refresh on 401")
 
 
 if __name__ == "__main__":

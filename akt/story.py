@@ -67,8 +67,9 @@ def update_story(story_path, body, date):
     if not (body and body.strip()):
         raise ValueError("update body is empty")
     text = story_md.read_text()
-    meta, _ = parse_frontmatter(text)
-    _validate_meta(meta)
+    # No meta validation here: an update just appends text, so the fresh
+    # start-story skeleton (empty summary/keys) is a valid target (issue #23).
+    # finish_story validates when the story is indexed.
     story_md.write_text(
         text.rstrip("\n") + "\n\n## Update — {}\n\n{}\n".format(date, body.strip())
     )
@@ -79,13 +80,22 @@ def finish_story(kb_path, story_path, body=None):
     story_path = Path(story_path)
     story_md = story_path / "story.md"
     if body is not None:
-        story_md.write_text(body)
-    text = story_md.read_text()
+        # Merge the body's frontmatter over the skeleton's so repo/slug/date
+        # survive a body that omits them, and validate the composed text
+        # BEFORE writing so a bad body can't destroy the skeleton (issue #26).
+        old_meta, _ = parse_frontmatter(story_md.read_text()) if story_md.exists() else ({}, "")
+        new_meta, new_body = parse_frontmatter(body)
+        old_meta.update(new_meta)
+        text = build_frontmatter(old_meta) + "\n" + new_body
+    else:
+        text = story_md.read_text()
     missing = [s for s in _REQUIRED_SECTIONS if s not in text]
     if missing:
         raise ValueError("story.md missing sections: {}".format(missing))
     meta, _ = parse_frontmatter(text)
     _validate_meta(meta)
+    if body is not None:
+        story_md.write_text(text)
     line = build_index_line(meta, rel_to_kb(kb_path, story_md))
     append_index_line(kb_path, line)
     return line

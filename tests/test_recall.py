@@ -43,6 +43,21 @@ class RecallTest(unittest.TestCase):
     def test_latest_none_for_unknown_repo(self):
         self.assertIsNone(latest(self.kb, "nope"))
 
+    def test_latest_ranks_by_story_activity_not_slug(self):
+        # issues #24/#25: two stories share a date prefix; the lexically
+        # smaller slug got an update-story append later, so it must win.
+        import os
+        for slug in ("attribution-form", "enter-key"):
+            meta = {"repo": "webapp", "slug": slug, "summary": "s", "keys": "k"}
+            rel = "stories/webapp/2026-08-10-{}/story.md".format(slug)
+            append_index_line(self.kb, build_index_line(meta, rel))
+            f = self.kb / rel
+            f.parent.mkdir(parents=True)
+            f.write_text("story")
+        os.utime(self.kb / "stories/webapp/2026-08-10-enter-key/story.md", (1000, 1000))
+        os.utime(self.kb / "stories/webapp/2026-08-10-attribution-form/story.md", (2000, 2000))
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "attribution-form")
+
     def test_recall_respects_limit(self):
         results = recall(self.kb, "login token csv export retry", limit=2)
         self.assertEqual(len(results), 2)
