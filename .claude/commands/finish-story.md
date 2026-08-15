@@ -6,12 +6,11 @@ allowed-tools: Bash, Read
 # Finish Story
 
 1. Read all `sessions/NN.md` under `<story_path>/sessions` and the work's diff.
-2. Write the distilled `story.md` body. It MUST include frontmatter and the required sections:
+2. Write the distilled `story.md` body. Frontmatter needs only `summary` and `keys` —
+   `repo`/`slug`/`date` fill in automatically from the skeleton `start-story` wrote
+   (values you do supply override them):
    ```
    ---
-   repo: <repo>
-   slug: <slug>
-   date: <YYYY-MM-DD>
    summary: <the key decision + because, one line — this is what recall matches on>
    keys: <comma, separated, keywords>
    ---
@@ -21,7 +20,8 @@ allowed-tools: Bash, Read
    ## Outcome
    ## Links
    ```
-3. Pipe it in. The CLI validates required sections + non-empty summary, appends the
+3. Pipe it in. The CLI validates required sections + non-empty summary/keys BEFORE
+   writing (a bad body leaves the existing story.md untouched), appends the
    INDEX.md line, **and commits the knowledge base** (pushing if a remote exists) in the
    same invocation — so capture is atomic; there is no separate commit step to forget:
 

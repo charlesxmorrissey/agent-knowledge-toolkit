@@ -5,9 +5,10 @@ allowed-tools: Bash, Read
 
 # Update Story
 
-For mid-engagement captures on an already-finished story — the next back-and-forth in
-the same thread, not a new decision (a new decision gets `/start-story`; see the
-continue-vs-new convention in the AKT rule).
+For mid-engagement captures on an open or already-finished story — the next
+back-and-forth in the same thread, not a new decision (a new decision gets
+`/start-story`; see the continue-vs-new convention in the AKT rule). A fresh
+`start-story` skeleton is a valid target — no need to fill its frontmatter first.
 
 1. Write the update body: what changed since the last section, any new
    **decision — because — rejected alternative**, and gotchas.

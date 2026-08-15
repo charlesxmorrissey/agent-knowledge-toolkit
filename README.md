@@ -126,11 +126,10 @@ EOF
 
 # 3. Work done — write the distilled record, index it, and commit (+ push)
 #    the knowledge base, all in one call:
+#    (repo/slug/date fill in from the start-story skeleton; frontmatter
+#    needs only summary + keys):
 akt finish-story "$STORY" --stdin <<'EOF'
 ---
-repo: webapp
-slug: auth-token-refresh
-date: 2026-06-05
 summary: Moved refresh from cron to lazy-on-401 to stop thundering-herd reauth
 keys: auth, token, rate-limit, webapp
 ---
@@ -166,7 +165,7 @@ to today; it's pinned above only so the paths in the example line up.)
 | `finish-story <story_path> --stdin`                     | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
 | `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
-| `latest <repo>`                                         | Print the most recent story path (+ summary) for a repo — resume without inventing a query                                                                       |
+| `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
 | `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files                                                                                                                     |
 
 #### `akt learn` — evidence ledger
