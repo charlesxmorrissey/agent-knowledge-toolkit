@@ -172,7 +172,11 @@ def main(argv=None):
         kb = _require_kb()
         sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else None
-        line = story_mod.finish_story(kb, sp, body)
+        try:
+            line = story_mod.finish_story(kb, sp, body)
+        except ValueError as err:
+            sys.stderr.write(str(err) + "\n")
+            sys.exit(2)
         print(line)
         # Atomic capture: index + commit happen in one CLI invocation so the
         # commit can't be left as a separate step the agent forgets to run.
@@ -184,7 +188,11 @@ def main(argv=None):
         sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else ""
         d = args.date or _date.today().isoformat()
-        print(story_mod.update_story(sp, body, d))
+        try:
+            print(story_mod.update_story(sp, body, d))
+        except ValueError as err:
+            sys.stderr.write(str(err) + "\n")
+            sys.exit(2)
         # Same atomic-capture rule as finish-story: append + commit in one invocation.
         sys.stderr.write(gitkb.commit_kb(kb, "story update: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0

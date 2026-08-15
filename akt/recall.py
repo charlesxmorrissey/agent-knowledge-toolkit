@@ -5,6 +5,7 @@ Today it is keyword overlap; it can later become vector search without changing
 callers or artifacts.
 """
 import re
+from pathlib import Path
 
 from akt.index import read_index_lines, parse_index_line
 
@@ -30,16 +31,27 @@ def score(query_tokens, entry):
 
 
 def latest(kb_path, repo):
-    """Most recent story entry for a repo, or None.
+    """Most recently ACTIVE story entry for a repo, or None.
 
-    Story dirs are date-prefixed (stories/<repo>/<YYYY-MM-DD>-<slug>/), so the
-    lexically greatest path is the newest — no date parsing needed.
+    Ranked by story.md mtime so an update-story append counts as recency —
+    lexical path order alone picks the wrong story when two share a date
+    prefix (issues #24/#25). Path is the tiebreak.
+    # ponytail: mtime, not git commit time — a fresh clone flattens mtimes
+    # and degrades to path order; switch to git log -1 --format=%ct if that bites.
     """
     entries = [
         e for e in (parse_index_line(ln) for ln in read_index_lines(kb_path))
         if e and e["repo"] == repo
     ]
-    return max(entries, key=lambda e: e["path"]) if entries else None
+
+    def activity(entry):
+        f = Path(kb_path) / entry["path"]
+        try:
+            return (f.stat().st_mtime, entry["path"])
+        except OSError:
+            return (0.0, entry["path"])
+
+    return max(entries, key=activity) if entries else None
 
 
 def recall(kb_path, query, limit=3):
