@@ -68,6 +68,22 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(launcher.resolve(), (REPO_ROOT / "bin" / "akt").resolve())
 
+    def test_retired_command_symlink_is_pruned(self):
+        self._run()
+        retired = self.home / ".claude" / "commands" / "retired.md"
+        retired.symlink_to(REPO_ROOT / ".claude" / "commands" / "retired.md")
+        rc, out, _ = self._run()
+        self.assertEqual(rc, 0)
+        self.assertFalse(retired.is_symlink())
+        self.assertIn("retired.md", out)
+
+    def test_foreign_dangling_symlink_is_left_alone(self):
+        self._run()
+        foreign = self.home / ".claude" / "commands" / "mine.md"
+        foreign.symlink_to(self.home / "nowhere.md")
+        self._run()
+        self.assertTrue(foreign.is_symlink())
+
     def test_existing_import_line_is_not_duplicated(self):
         claude_md = self.home / ".claude" / "CLAUDE.md"
         claude_md.parent.mkdir(parents=True)

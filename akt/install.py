@@ -48,8 +48,17 @@ def install(home=None):
     home = Path(home) if home else Path.home()
     bin_dir = home / ".local" / "bin"
     _link(REPO_ROOT / "bin" / "akt", bin_dir / "akt")
-    for cmd in sorted((REPO_ROOT / ".claude" / "commands").glob("*.md")):
-        _link(cmd, home / ".claude" / "commands" / cmd.name)
+    cmd_src = REPO_ROOT / ".claude" / "commands"
+    cmd_dest = home / ".claude" / "commands"
+    for cmd in sorted(cmd_src.glob("*.md")):
+        _link(cmd, cmd_dest / cmd.name)
+    # Prune symlinks to commands this repo used to ship but no longer does.
+    if cmd_dest.is_dir():
+        for link in cmd_dest.iterdir():
+            if link.is_symlink() and not link.exists():
+                if Path(os.readlink(link)).parent == cmd_src:
+                    link.unlink()
+                    print("removed retired command {}".format(link))
     _link(REPO_ROOT / "claude" / "akt-rule.md", home / ".claude" / "AKT.md")
     claude_md = home / ".claude" / "CLAUDE.md"
     _ensure_import(claude_md, IMPORT_LINE)

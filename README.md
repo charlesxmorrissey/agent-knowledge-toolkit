@@ -71,15 +71,15 @@ python3 -m akt install
 Because they're symlinks, `git pull` in this repo updates the global install —
 no re-copy step, ever. The installer is idempotent and never clobbers a real
 file (it warns and leaves it; remove the file and re-run to link). After this,
-`akt …` and the `/recall`, `/start-story`, `/end-session`, `/update-story`,
-`/finish-story` slash commands work in every repo, and the auto-recall rule
+`akt …` and the `/resume`, `/recall`, `/start-story`, `/update-story`,
+`/finish-story`, `/wrap` slash commands work in every repo, and the auto-recall rule
 tells the agent to recall relevant past stories before a non-trivial task and
 capture the story when meaningful work wraps up — a no-op when AKT isn't
 configured. (It's agent-instructed, not a hard hook, so it's smart and
 low-noise but not 100% deterministic.)
 
 To uninstall, remove the symlinks and the import line:
-`rm ~/.local/bin/akt ~/.claude/AKT.md ~/.claude/commands/{recall,start-story,end-session,update-story,finish-story}.md`
+`rm ~/.local/bin/akt ~/.claude/AKT.md ~/.claude/commands/{resume,recall,start-story,update-story,finish-story,wrap,mine-learnings}.md`
 and delete the `@AKT.md` line from `~/.claude/CLAUDE.md`.
 
 Finally, initialize a knowledge base (a standalone git repo you keep wherever
@@ -183,11 +183,17 @@ to today; it's pinned above only so the paths in the example line up.)
 
 `.claude/commands/` provides thin wrappers that add the model judgment around the CLI:
 
+- `/resume` — start of session: repo state, `akt latest`, read the story, pick up where you left off
 - `/start-story` — begin a story for the current repo
-- `/end-session` — write a session handoff
 - `/update-story` — append a dated update to an open story and commit it
 - `/finish-story` — distill the story, index it, and commit + push the knowledge base
 - `/recall` — surface and judge relevant past stories before starting work
+- `/wrap` — end of session: capture the story (update vs. new), run the learnings pass, report what's open
+
+`/resume` and `/wrap` each include a **repo extras** step: put a `## Resume extras`
+or `## Wrap extras` section in the repo's CLAUDE.md/AGENTS.md and its steps run
+at that point (trackers, timesheets, push policy). A repo can also ship its own
+`.claude/commands/resume.md`/`wrap.md` to replace the shipped command entirely.
 
 With the optional auto-recall rule installed (above), the agent runs `/recall` and
 `/finish-story` on its own — you don't have to invoke them.
@@ -199,7 +205,7 @@ knowledge/
   stories/
     <repo>/<date>-<slug>/
       story.md          # source of truth: problem, decisions + why, outcome
-      sessions/        # handoffs, created only by /end-session (empty for single-session stories)
+      sessions/        # handoffs, created only by `akt end-session` (empty for single-session stories)
         01.md          #   01.md, 02.md, … appear when you end a session mid-story
   AGENTS.md             # global rules (graduated patterns — future work)
   INDEX.md              # derived search cache (regenerable; do not hand-edit)
