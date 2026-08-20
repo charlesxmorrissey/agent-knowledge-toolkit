@@ -11,5 +11,5 @@ allowed-tools: Bash
    akt start-story <repo> "<short title>"
    ```
    It prints the created story directory and seeds `story.md` (an empty `sessions/`
-   directory is created too; handoffs are written later by `/end-session`).
-3. Keep brief notes as you work; you will hand them off with `/end-session`.
+   directory is created too; handoffs are written later via `akt end-session`).
+3. Keep brief notes as you work; capture them at session end with `/wrap`.
