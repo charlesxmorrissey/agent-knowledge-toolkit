@@ -242,6 +242,10 @@ python3 -m unittest discover -s tests
   pass, and graduate (through a y/n gate, with provenance) into repo-local or global
   AGENTS.md rules that auto-load in every session; /mine-learnings bootstraps the ledger
   from existing stories.
+- Session-lifecycle commands — `/resume` and `/wrap` compose the per-verb commands into
+  start/end-of-session routines, with a repo-extras hook (`## Resume extras` / `## Wrap extras`
+  in the repo's CLAUDE.md) for project-specific steps; `/wrap` supersedes `/end-session`,
+  and `akt install` prunes symlinks to retired commands.
 
 **Next, in build order (see `docs/superpowers/`):**
 
