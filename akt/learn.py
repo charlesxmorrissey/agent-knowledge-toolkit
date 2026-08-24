@@ -38,6 +38,13 @@ def parse_learning_line(line):
     }
 
 
+def compact_line(entry):
+    """Scan-pass format (issue #31): id + truncated rule, no stories."""
+    rule = entry["rule"] if len(entry["rule"]) <= 80 else entry["rule"][:79] + "…"
+    return "- [{}] {} | hits: {} | status: {}".format(
+        entry["id"], rule, entry["hits"], entry["status"])
+
+
 def _ledger_file(kb_path):
     return Path(kb_path) / LEARNINGS_FILE
 

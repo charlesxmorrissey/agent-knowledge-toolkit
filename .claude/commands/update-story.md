@@ -24,7 +24,8 @@ back-and-forth in the same thread, not a new decision (a new decision gets
    The commit status is printed to stderr and never fails the flow when offline.
 
 3. **Learnings pass** — after the story commit:
-   - Run `akt learn list --status candidate`.
+   - Run `akt learn list --status candidate --compact` (full text of a
+     likely match via `akt learn show <id>`).
    - For each transferable lesson in the story you just captured (a gotcha or
      decision that would help on a future task): if it matches an existing
      candidate — same lesson in different words counts — run

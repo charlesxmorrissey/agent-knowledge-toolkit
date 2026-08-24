@@ -208,6 +208,43 @@ class CliTest(unittest.TestCase):
         self.assertIn("[a]", out)
         self.assertNotIn("[b]", out)
 
+    def test_learn_list_filters_by_repo(self):
+        self._run(["init", str(self.kb)])
+        self._run(["learn", "add", "a", "Rule A", "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "add", "b", "Rule B", "--story", "shop/2026-07-01-b"])
+        self._run(["learn", "reinforce", "b", "--story", "webapp/2026-07-02-c"])
+        rc, out = self._run(["learn", "list", "--repo", "shop"])
+        self.assertEqual(rc, 0)
+        self.assertIn("[b]", out)
+        self.assertNotIn("[a]", out)
+        # b's stories span both repos, so it shows under webapp too
+        rc, out = self._run(["learn", "list", "--repo", "webapp"])
+        self.assertIn("[a]", out)
+        self.assertIn("[b]", out)
+
+    def test_learn_list_compact_truncates_and_drops_stories(self):
+        self._run(["init", str(self.kb)])
+        self._run(["learn", "add", "long", "R" * 100, "--story", "webapp/2026-07-01-a"])
+        rc, out = self._run(["learn", "list", "--compact"])
+        self.assertEqual(rc, 0)
+        self.assertIn("R" * 79 + "…", out)
+        self.assertNotIn("R" * 80, out)
+        self.assertNotIn("webapp/2026-07-01-a", out)
+
+    def test_learn_show_prints_full_line(self):
+        self._run(["init", str(self.kb)])
+        self._run(["learn", "add", "long", "R" * 100, "--story", "webapp/2026-07-01-a"])
+        rc, out = self._run(["learn", "show", "long"])
+        self.assertEqual(rc, 0)
+        self.assertIn("R" * 100, out)
+        self.assertIn("webapp/2026-07-01-a", out)
+
+    def test_learn_show_unknown_id_exits_2(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(["learn", "show", "nope"])
+        self.assertEqual(ctx.exception.code, 2)
+
     def test_learn_add_invalid_date_exits_2_and_no_write(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as ctx:

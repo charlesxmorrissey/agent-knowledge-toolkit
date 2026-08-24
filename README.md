@@ -176,7 +176,8 @@ to today; it's pinned above only so the paths in the example line up.)
 | `reinforce <id> --story <repo>/<date>-<slug>`    | Bump hits; prints `PROPOSE:` at threshold        |
 | `graduate <id>`                                  | Promote; global scope also writes KB `AGENTS.md` |
 | `wont <id>`                                      | Mark wont-graduate; stops proposals              |
-| `list [--status STATUS]`                         | Print the ledger                                 |
+| `list [--status STATUS] [--repo REPO] [--compact]` | Print the ledger; `--compact` = id + truncated rule (the scan-pass view) |
+| `show <id>`                                      | Print one entry's full ledger line               |
 | `prune`                                          | Print-only staleness report                      |
 
 ### Slash commands (Claude Code)
