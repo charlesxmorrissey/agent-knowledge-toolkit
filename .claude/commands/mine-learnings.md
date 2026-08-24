@@ -15,7 +15,8 @@ Bootstrap or re-sweep the evidence ledger from the story corpus.
 3. For each story, read `story.md` and extract transferable lessons — gotchas,
    decisions, and rules that would help on a future task ("would this help in
    another repo or task?"). Project-specific trivia gets no entry.
-4. For each lesson, check the current ledger (`akt learn list`):
+4. For each lesson, check the current ledger (`akt learn list --compact`;
+   full text of a likely match via `akt learn show <id>`):
    - matches an existing entry (same lesson, any wording) →
      `akt learn reinforce <id> --story <repo>/<date>-<slug> --date <story date>`
    - new → `akt learn add <kebab-id> "<one instruction sentence, no '|'>" --story <repo>/<date>-<slug> --date <story date>`
