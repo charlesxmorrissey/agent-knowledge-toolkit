@@ -18,8 +18,9 @@ End-of-session routine. Do these in order:
    - Mid-story with nothing distillable yet → leave a handoff instead:
      `akt end-session <story_path>` with State / Done / Next / Watch out
      on stdin.
-2. **Learnings pass**: run `akt learn list --status candidate` and compare the
-   session's transferable lessons — matches get
+2. **Learnings pass**: run `akt learn list --status candidate --compact` and
+   compare the session's transferable lessons (full text of a likely match via
+   `akt learn show <id>`) — matches get
    `akt learn reinforce <id> --story <repo>/<date>-<slug>`, new ones
    `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any
    `PROPOSE:` line to the user verbatim and act on the answer

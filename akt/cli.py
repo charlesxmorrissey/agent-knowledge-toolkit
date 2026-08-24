@@ -112,7 +112,7 @@ def build_parser():
 
     sub.add_parser("reindex", help="rebuild INDEX.md from all story.md files")
 
-    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/graduate/wont/list/prune")
+    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/graduate/wont/list/show/prune")
     lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
 
     la = lsub.add_parser("add", help="new candidate at hits 1")
@@ -138,6 +138,12 @@ def build_parser():
 
     ll = lsub.add_parser("list", help="print the ledger")
     ll.add_argument("--status", default=None, choices=learn_mod.STATUSES)
+    ll.add_argument("--repo", default=None, help="only entries with a story in this repo")
+    ll.add_argument("--compact", action="store_true",
+                    help="id + truncated rule per line; full text via `akt learn show <id>`")
+
+    lshow = lsub.add_parser("show", help="print one entry's full ledger line")
+    lshow.add_argument("id")
 
     lsub.add_parser("prune", help="print-only staleness report")
 
@@ -257,7 +263,14 @@ def main(argv=None):
                 for entry in learn_mod.read_learnings(kb):
                     if args.status and entry["status"] != args.status:
                         continue
-                    print(learn_mod.build_learning_line(entry))
+                    if args.repo and args.repo not in (
+                            s.split("/", 1)[0] for s in entry["stories"]):
+                        continue
+                    print(learn_mod.compact_line(entry) if args.compact
+                          else learn_mod.build_learning_line(entry))
+            elif args.learn_cmd == "show":
+                entry = learn_mod._find(learn_mod.read_learnings(kb), args.id)
+                print(learn_mod.build_learning_line(entry))
             elif args.learn_cmd == "prune":
                 cutoff = int(config.get("prune_days") or 90)
                 stale_c, stale_g = learn_mod.prune_report(kb, today, cutoff)
