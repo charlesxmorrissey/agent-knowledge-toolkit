@@ -31,10 +31,18 @@ _REQUIRED_SECTIONS = ["## Problem", "## Decisions", "## Outcome"]
 _REQUIRED_META = ["repo", "slug", "summary", "keys"]
 
 
-def _validate_meta(meta):
-    missing = [k for k in _REQUIRED_META if not meta.get(k, "").strip()]
-    if missing:
-        raise ValueError("story.md frontmatter missing: {}".format(missing))
+def _validate(text, meta):
+    # Report every problem in one pass so a body that's wrong in both ways
+    # costs one round trip, not two (issue #33).
+    problems = []
+    sections = [s for s in _REQUIRED_SECTIONS if s not in text]
+    if sections:
+        problems.append("missing sections: {}".format(sections))
+    keys = [k for k in _REQUIRED_META if not meta.get(k, "").strip()]
+    if keys:
+        problems.append("frontmatter missing: {}".format(keys))
+    if problems:
+        raise ValueError("story.md " + "; ".join(problems))
 
 
 def start_story(kb_path, repo, title, date):
@@ -89,11 +97,8 @@ def finish_story(kb_path, story_path, body=None):
         text = build_frontmatter(old_meta) + "\n" + new_body
     else:
         text = story_md.read_text()
-    missing = [s for s in _REQUIRED_SECTIONS if s not in text]
-    if missing:
-        raise ValueError("story.md missing sections: {}".format(missing))
     meta, _ = parse_frontmatter(text)
-    _validate_meta(meta)
+    _validate(text, meta)
     if body is not None:
         story_md.write_text(text)
     line = build_index_line(meta, rel_to_kb(kb_path, story_md))
