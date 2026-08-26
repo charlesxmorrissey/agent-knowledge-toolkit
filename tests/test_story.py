@@ -82,6 +82,17 @@ class StoryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             finish_story(self.kb, d, bad)
 
+    def test_finish_story_reports_all_failures_at_once(self):
+        # issue #33: a body missing both sections and frontmatter keys must
+        # surface everything in one error, not one failure per attempt.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        bad = "---\nrepo: webapp\nslug: auth\n---\n## Problem\nonly\n"
+        with self.assertRaises(ValueError) as ctx:
+            finish_story(self.kb, d, bad)
+        msg = str(ctx.exception)
+        self.assertIn("missing sections: ['## Decisions', '## Outcome']", msg)
+        self.assertIn("frontmatter missing: ['summary', 'keys']", msg)
+
     def test_finish_story_rejects_empty_summary(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
         bad = "---\nrepo: webapp\nslug: auth\nsummary:\nkeys: k\n---\n## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
