@@ -30,8 +30,16 @@ End-of-session routine. Do these in order:
 3. **Repo extras**: if this repo's CLAUDE.md or AGENTS.md has a
    `## Wrap extras` section, execute those steps now (timesheets, trackers,
    repo commit/push policy — anything project-specific).
-4. **Report**: what shipped, what's left open (waiting-on, unverified
-   deploys), and the story path it was captured in.
+4. **Safe-exit check**: verify nothing is left hanging — re-run the checks,
+   don't assert from memory:
+   - `git status --short` clean and branch pushed in this repo AND any other
+     repo touched this session (knowledge base included).
+   - The session log's last entry is a closed OUT (if this repo keeps one).
+   - No background tasks, agents, or watchers still running.
+   - No drafts awaiting approval or unposted external comments.
+5. **Report**: what shipped, what's left open (waiting-on, unverified
+   deploys), the story path it was captured in, and an explicit "safe to
+   exit" verdict (or what's still hanging).
 
 A repo that needs a different shape entirely can ship its own
 `.claude/commands/wrap.md`; the project-level command shadows this one.
