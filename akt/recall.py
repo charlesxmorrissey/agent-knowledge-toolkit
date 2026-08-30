@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from akt.index import read_index_lines, parse_index_line
+from akt.frontmatter import parse_frontmatter, split_keys
 
 _TOKEN = re.compile(r"[a-z0-9]+")
 
@@ -35,14 +36,34 @@ def latest(kb_path, repo):
 
     Ranked by story.md mtime so an update-story append counts as recency —
     lexical path order alone picks the wrong story when two share a date
-    prefix (issues #24/#25). Path is the tiebreak.
+    prefix (issues #24/#25). Path is the tiebreak. Read story files directly
+    so an active story with an empty summary is still available to resume.
     # ponytail: mtime, not git commit time — a fresh clone flattens mtimes
     # and degrades to path order; switch to git log -1 --format=%ct if that bites.
     """
-    entries = [
+    indexed = [
         e for e in (parse_index_line(ln) for ln in read_index_lines(kb_path))
         if e and e["repo"] == repo
     ]
+    entries = {entry["path"]: entry for entry in indexed}
+
+    stories = Path(kb_path) / "stories"
+    for story_md in stories.glob("*/*/story.md"):
+        try:
+            meta, _ = parse_frontmatter(story_md.read_text())
+        except OSError:
+            continue
+        if meta.get("repo") != repo:
+            continue
+        rel_path = story_md.relative_to(kb_path).as_posix()
+        entries[rel_path] = {
+            "repo": meta.get("repo", ""),
+            "slug": meta.get("slug", ""),
+            "summary": meta.get("summary", ""),
+            "keys": split_keys(meta.get("keys", "")),
+            "path": rel_path,
+        }
+    entries = list(entries.values())
 
     def activity(entry):
         f = Path(kb_path) / entry["path"]

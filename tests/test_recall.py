@@ -58,6 +58,23 @@ class RecallTest(unittest.TestCase):
         os.utime(self.kb / "stories/webapp/2026-08-10-attribution-form/story.md", (2000, 2000))
         self.assertEqual(latest(self.kb, "webapp")["slug"], "attribution-form")
 
+    def test_latest_includes_active_story_without_summary(self):
+        import os
+
+        finished = self.kb / "stories/webapp/2026-08-30-finished/story.md"
+        active = self.kb / "stories/webapp/2026-08-30-active/story.md"
+        for story, summary in ((finished, "finished"), (active, "")):
+            story.parent.mkdir(parents=True)
+            story.write_text(
+                "---\nrepo: webapp\nslug: {}\nsummary: {}\nkeys: auth\n---\n".format(
+                    story.parent.name.rsplit("-", 1)[-1], summary
+                )
+            )
+        os.utime(finished, (1000, 1000))
+        os.utime(active, (2000, 2000))
+
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "active")
+
     def test_recall_respects_limit(self):
         results = recall(self.kb, "login token csv export retry", limit=2)
         self.assertEqual(len(results), 2)
