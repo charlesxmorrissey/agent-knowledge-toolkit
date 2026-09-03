@@ -5,6 +5,7 @@ Today it is keyword overlap; it can later become vector search without changing
 callers or artifacts.
 """
 import re
+import subprocess
 from pathlib import Path
 
 from akt.index import read_index_lines, parse_index_line
@@ -34,12 +35,12 @@ def score(query_tokens, entry):
 def latest(kb_path, repo):
     """Most recently ACTIVE story entry for a repo, or None.
 
-    Ranked by story.md mtime so an update-story append counts as recency —
+    Ranked by the latest git commit touching story.md when available, with
+    mtime as a fallback for uncommitted stories and non-git knowledge bases.
+    An update-story commit must remain the activity signal after a clone —
     lexical path order alone picks the wrong story when two share a date
     prefix (issues #24/#25). Path is the tiebreak. Read story files directly
     so an active story with an empty summary is still available to resume.
-    # ponytail: mtime, not git commit time — a fresh clone flattens mtimes
-    # and degrades to path order; switch to git log -1 --format=%ct if that bites.
     """
     indexed = [
         e for e in (parse_index_line(ln) for ln in read_index_lines(kb_path))
@@ -68,6 +69,9 @@ def latest(kb_path, repo):
     def activity(entry):
         f = Path(kb_path) / entry["path"]
         try:
+            result = subprocess.run(["git", "-C", str(kb_path), "log", "-1", "--format=%ct", "--", entry["path"]], capture_output=True, text=True, check=False)
+            if result.returncode == 0 and result.stdout.strip():
+                return (float(result.stdout.strip()), entry["path"])
             return (f.stat().st_mtime, entry["path"])
         except OSError:
             return (0.0, entry["path"])

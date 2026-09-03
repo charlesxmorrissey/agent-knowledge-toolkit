@@ -75,6 +75,26 @@ class RecallTest(unittest.TestCase):
 
         self.assertEqual(latest(self.kb, "webapp")["slug"], "active")
 
+    def test_latest_uses_git_activity_after_clone(self):
+        import os
+        import subprocess
+        subprocess.run(["git", "init", "-q", str(self.kb)], check=True)
+        stories = []
+        for i, slug in enumerate(("older", "newer"), 1):
+            rel = "stories/webapp/2026-08-10-{}/story.md".format(slug)
+            append_index_line(self.kb, build_index_line({"repo": "webapp", "slug": slug, "summary": "s", "keys": "k"}, rel))
+            f = self.kb / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(slug)
+            stories.append(f)
+            subprocess.run(["git", "-C", str(self.kb), "add", "."], check=True)
+            env = os.environ.copy()
+            env["GIT_AUTHOR_DATE"] = env["GIT_COMMITTER_DATE"] = "2026-08-10T00:0{}:00Z".format(i)
+            subprocess.run(["git", "-C", str(self.kb), "commit", "-qm", slug], env=env, check=True)
+        os.utime(stories[0], (3000, 3000))
+        os.utime(stories[1], (1000, 1000))
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "newer")
+
     def test_recall_respects_limit(self):
         results = recall(self.kb, "login token csv export retry", limit=2)
         self.assertEqual(len(results), 2)
