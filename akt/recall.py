@@ -7,7 +7,9 @@ callers or artifacts.
 import re
 from pathlib import Path
 
+from akt.frontmatter import parse_frontmatter, split_keys
 from akt.index import read_index_lines, parse_index_line
+from akt.paths import rel_to_kb
 
 _TOKEN = re.compile(r"[a-z0-9]+")
 
@@ -39,10 +41,26 @@ def latest(kb_path, repo):
     # ponytail: mtime, not git commit time — a fresh clone flattens mtimes
     # and degrades to path order; switch to git log -1 --format=%ct if that bites.
     """
-    entries = [
-        e for e in (parse_index_line(ln) for ln in read_index_lines(kb_path))
+    entries = {
+        e["path"]: e
+        for e in (parse_index_line(ln) for ln in read_index_lines(kb_path))
         if e and e["repo"] == repo
-    ]
+    }
+    # start-story never indexes (only finish-story does), so an open story is
+    # absent from INDEX.md and resume landed on a stale one (issues #35/#37).
+    # Union the on-disk stories for this repo; the index entry wins when both exist.
+    for f in (Path(kb_path) / "stories" / repo).glob("*/story.md"):
+        rel = rel_to_kb(kb_path, f)
+        if rel not in entries:
+            meta, _ = parse_frontmatter(f.read_text())
+            entries[rel] = {
+                "repo": repo,
+                "slug": meta.get("slug", ""),
+                "summary": meta.get("summary", ""),
+                "keys": split_keys(meta.get("keys", "")),
+                "path": rel,
+            }
+    entries = list(entries.values())
 
     def activity(entry):
         f = Path(kb_path) / entry["path"]

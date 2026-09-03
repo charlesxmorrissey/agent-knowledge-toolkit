@@ -58,6 +58,26 @@ class RecallTest(unittest.TestCase):
         os.utime(self.kb / "stories/webapp/2026-08-10-attribution-form/story.md", (2000, 2000))
         self.assertEqual(latest(self.kb, "webapp")["slug"], "attribution-form")
 
+    def test_latest_includes_open_story_not_yet_indexed(self):
+        # issues #35/#37: start-story doesn't index, so an open story that got
+        # update-story appends after a finished one was invisible to resume.
+        import os
+        finished = "stories/webapp/2026-08-27-finished/story.md"
+        self._add("webapp", "finished", "Finished story", "k")
+        for rel, slug, summary in (
+            (finished, "finished", "Finished story"),
+            ("stories/webapp/2026-08-30-open/story.md", "open", ""),
+        ):
+            f = self.kb / rel
+            f.parent.mkdir(parents=True)
+            f.write_text("---\nrepo: webapp\nslug: {}\ndate: d\nsummary: {}\nkeys: \n---\nbody".format(slug, summary))
+        os.utime(self.kb / finished, (1000, 1000))
+        os.utime(self.kb / "stories/webapp/2026-08-30-open/story.md", (2000, 2000))
+        entry = latest(self.kb, "webapp")
+        self.assertEqual(entry["slug"], "open")
+        self.assertEqual(entry["summary"], "")
+        self.assertEqual(entry["path"], "stories/webapp/2026-08-30-open/story.md")
+
     def test_recall_respects_limit(self):
         results = recall(self.kb, "login token csv export retry", limit=2)
         self.assertEqual(len(results), 2)
