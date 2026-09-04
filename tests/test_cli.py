@@ -34,7 +34,9 @@ class CliTest(unittest.TestCase):
 
         rc, out = self._run(["start-story", "webapp", "Auth Token Refresh", "--date", "2026-06-05"])
         self.assertEqual(rc, 0)
-        self.assertTrue(Path(out).joinpath("story.md").exists())
+        # issue #39: KB-relative, like recall/latest print and finish/update accept.
+        self.assertEqual(out, "stories/webapp/2026-06-05-auth-token-refresh")
+        self.assertTrue((self.kb / out / "story.md").exists())
 
         rc, out = self._run(["reindex"])
         self.assertEqual(rc, 0)

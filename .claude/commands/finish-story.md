@@ -21,9 +21,11 @@ allowed-tools: Bash, Read
    ## Links
    ```
 3. Pipe it in. The CLI validates required sections + non-empty summary/keys BEFORE
-   writing (a bad body leaves the existing story.md untouched), appends the
-   INDEX.md line, **and commits the knowledge base** (pushing if a remote exists) in the
-   same invocation — so capture is atomic; there is no separate commit step to forget:
+   writing (a body missing sections leaves the existing story.md untouched; a body
+   with all sections but blank summary/keys IS written — fill in the frontmatter and
+   re-run without `--stdin`), appends the INDEX.md line, **and commits the knowledge
+   base** (pushing if a remote exists) in the same invocation — so capture is atomic;
+   there is no separate commit step to forget:
 
    ```bash
    akt finish-story <story_path> --stdin <<'EOF'

@@ -98,7 +98,24 @@ def finish_story(kb_path, story_path, body=None):
     else:
         text = story_md.read_text()
     meta, _ = parse_frontmatter(text)
-    _validate(text, meta)
+    try:
+        _validate(text, meta)
+    except ValueError as err:
+        if body is None:
+            raise
+        if all(s in text for s in _REQUIRED_SECTIONS):
+            # Body is structurally complete and only the frontmatter is short
+            # (typically the fresh skeleton's blank summary/keys): keep it rather
+            # than discard the distilled text (issue #39). Not indexed yet.
+            story_md.write_text(text)
+            raise ValueError(
+                "{}; body written to story.md but NOT indexed — fill in the "
+                "frontmatter and re-run finish-story without --stdin".format(err)
+            )
+        raise ValueError(
+            "{}; nothing written — the --stdin body must carry summary/keys in "
+            "its frontmatter and all required sections".format(err)
+        )
     if body is not None:
         story_md.write_text(text)
     line = build_index_line(meta, rel_to_kb(kb_path, story_md))
