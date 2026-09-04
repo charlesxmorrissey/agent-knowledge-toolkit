@@ -128,6 +128,26 @@ class StoryTest(unittest.TestCase):
             finish_story(self.kb, d, "no frontmatter, no sections")
         self.assertEqual((d / "story.md").read_text(), before)
 
+    def test_finish_story_keeps_complete_body_when_frontmatter_blank(self):
+        # issue #39: a body with every required section but blank summary/keys
+        # (the fresh skeleton's frontmatter) must be written, not discarded —
+        # the error says so and the story stays unindexed.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "## Problem\nreal text\n## Decisions\n- a\n## Outcome\nok\n## Links\n"
+        with self.assertRaises(ValueError) as ctx:
+            finish_story(self.kb, d, body)
+        msg = str(ctx.exception)
+        self.assertIn("frontmatter missing: ['summary', 'keys']", msg)
+        self.assertIn("written", msg)
+        self.assertIn("real text", (d / "story.md").read_text())
+        self.assertEqual(read_index_lines(self.kb), [])
+
+    def test_finish_story_incomplete_body_error_names_stdin_contract(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        with self.assertRaises(ValueError) as ctx:
+            finish_story(self.kb, d, "no frontmatter, no sections")
+        self.assertIn("nothing written", str(ctx.exception))
+
     def test_finish_story_merges_skeleton_frontmatter(self):
         # issue #26: repo/slug/date come from the skeleton when the body's
         # frontmatter only carries summary/keys.

@@ -10,6 +10,7 @@ allowed-tools: Bash
    ```bash
    akt start-story <repo> "<short title>"
    ```
-   It prints the created story directory and seeds `story.md` (an empty `sessions/`
+   It prints the created story directory (relative to the knowledge base, the same
+   form `recall` prints and `finish-story`/`update-story` accept) and seeds `story.md` (an empty `sessions/`
    directory is created too; handoffs are written later via `akt end-session`).
 3. Keep brief notes as you work; capture them at session end with `/wrap`.

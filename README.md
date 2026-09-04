@@ -114,7 +114,8 @@ The slash commands wrap a plain CLI — use it directly with other agents,
 scripts, or by hand. A story's life, start to payoff:
 
 ```bash
-# 1. Start a story (one per feature/PR). Prints the story directory.
+# 1. Start a story (one per feature/PR). Prints the story directory,
+#    relative to the knowledge base (the form every other command accepts).
 STORY=$(akt start-story webapp "Auth token refresh" --date 2026-06-05)
 
 # 2. Stopping mid-story? Leave a handoff for the next session:
@@ -160,7 +161,7 @@ to today; it's pinned above only so the paths in the example line up.)
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `install`                                               | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files)                           |
 | `init <path>`                                           | Create a knowledge base at `<path>` and record it in config                                                                                                      |
-| `start-story <repo> "<title>" [--date YYYY-MM-DD]`      | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the path                                                                                   |
+| `start-story <repo> "<title>" [--date YYYY-MM-DD]`      | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the KB-relative path                                                                       |
 | `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md`                                                                                  |
 | `finish-story <story_path> --stdin`                     | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |

@@ -12,6 +12,7 @@ from akt import init as init_mod
 from akt import install as install_mod
 from akt import gitkb
 from akt import learn as learn_mod
+from akt.paths import rel_to_kb
 
 
 def _warn_if_dirty(kb):
@@ -165,7 +166,10 @@ def main(argv=None):
         kb = _require_kb()
         _warn_if_dirty(kb)
         d = args.date or _date.today().isoformat()
-        print(story_mod.start_story(kb, args.repo, args.title, d))
+        # KB-relative, matching what recall/latest print and what finish-story/
+        # update-story resolve — an absolute path here got re-resolved against
+        # knowledge_base_path and doubled (issue #39).
+        print(rel_to_kb(kb, story_mod.start_story(kb, args.repo, args.title, d)))
         return 0
 
     if args.cmd == "end-session":
