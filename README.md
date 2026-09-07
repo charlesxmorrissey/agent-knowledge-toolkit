@@ -167,6 +167,7 @@ to today; it's pinned above only so the paths in the example line up.)
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
 | `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
+| `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
 | `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files                                                                                                                     |
 
 #### `akt learn` — evidence ledger
@@ -248,17 +249,18 @@ python3 -m unittest discover -s tests
   start/end-of-session routines, with a repo-extras hook (`## Resume extras` / `## Wrap extras`
   in the repo's CLAUDE.md) for project-specific steps; `/wrap` supersedes `/end-session`,
   and `akt install` prunes symlinks to retired commands.
+- `digest [--since]` — cross-repo activity since a date (new stories + `## Update` appends),
+  the knowledge-base half of a daily status; pipe it wherever your standup lives.
 
-**Next, in build order (see `docs/superpowers/`):**
+**Works with your existing workflow.** AKT deliberately ships no planner, PR tool,
+or review flow. Anything you already use — Superpowers, a Workflow script, your own
+slash commands — plugs in at two touchpoints: `recall` before the work and
+`finish-story` (or `update-story`) after it. The original design reserved a "planning /
+workflow toolkit" layer for this; the ecosystem filled it, so that layer is retired.
 
-1. **Planning / workflow toolkit** — swarm planning as a swappable default, plus
-   PR and daily-status automations, all layered on the kernel via two touchpoints
-   (`recall` before work, `finish-story` after).
-2. **Distribution** — a Claude Code plugin for public distribution (`akt install`
+**Next:**
+
+1. **Distribution** — a Claude Code plugin for public distribution (`akt install`
    covers single-user setup; the plugin is the answer for versioned, multi-user installs).
 
-## Design docs
-
-- Design spec: [`docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md`](docs/superpowers/specs/2026-06-05-agent-knowledge-toolkit-design.md)
-- Kernel implementation plan: [`docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md`](docs/superpowers/plans/2026-06-05-akt-kernel-mvp.md)
-- Learning protocol design: [`docs/superpowers/specs/2026-07-30-akt-learning-protocol-design.md`](docs/superpowers/specs/2026-07-30-akt-learning-protocol-design.md)
+Design specs and implementation plans live in [`docs/superpowers/`](docs/superpowers/).

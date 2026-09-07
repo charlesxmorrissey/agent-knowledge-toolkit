@@ -111,6 +111,9 @@ def build_parser():
     pl = sub.add_parser("latest", help="print the most recent story path for a repo")
     pl.add_argument("repo")
 
+    pd = sub.add_parser("digest", help="print stories (all repos) created or updated since a date")
+    pd.add_argument("--since", default=None, help="YYYY-MM-DD, inclusive (default: today)")
+
     sub.add_parser("reindex", help="rebuild INDEX.md from all story.md files")
 
     plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/graduate/wont/list/show/prune")
@@ -220,6 +223,20 @@ def main(argv=None):
         entry = recall_mod.latest(kb, args.repo)
         if entry:
             _print_entry(entry)
+        return 0
+
+    if args.cmd == "digest":
+        kb = _require_kb()
+        since = args.since or _date.today().isoformat()
+        try:
+            _date.fromisoformat(since)
+        except ValueError:
+            print("error: --since must be YYYY-MM-DD", file=sys.stderr)
+            return 2
+        for entry in recall_mod.digest(kb, since):
+            _print_entry(entry)
+            for d, first in entry["updates"]:
+                print("    update {}: {}".format(d, first))
         return 0
 
     if args.cmd == "reindex":

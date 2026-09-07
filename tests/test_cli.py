@@ -72,6 +72,21 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out, "")
 
+    def test_digest_prints_recent_stories_with_updates(self):
+        self._run(["init", str(self.kb)])
+        self._seed_story(date="2026-06-05", slug="auth")
+        s = self._seed_story(date="2026-07-01", slug="newer", summary="newer work")
+        (s / "story.md").write_text((s / "story.md").read_text() + "\n## Update — 2026-07-03\n\nfollow-up shipped\n")
+        rc, out = self._run(["digest", "--since", "2026-07-01"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.splitlines(), [
+            "stories/webapp/2026-07-01-newer/story.md",
+            "    newer work",
+            "    update 2026-07-03: follow-up shipped",
+        ])
+        rc, out = self._run(["digest", "--since", "07/01/2026"])
+        self.assertEqual(rc, 2)
+
     def _run_stdin(self, argv, text):
         import io as _io
         import sys as _sys
