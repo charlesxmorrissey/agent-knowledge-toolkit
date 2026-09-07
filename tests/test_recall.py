@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from akt.index import append_index_line, build_index_line
-from akt.recall import latest, recall, tokenize
+from akt.recall import digest, latest, recall, tokenize
 
 
 class RecallTest(unittest.TestCase):
@@ -85,3 +85,35 @@ class RecallTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DigestTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.kb = Path(self.tmp.name)
+        self._story("webapp", "2026-09-01", "old", "old work")
+        self._story("webapp", "2026-09-07", "new", "new work")
+        self._story("api", "2026-08-20", "updated", "long thread",
+                    "\n## Update — 2026-09-06\n\nsecond pass landed\nmore detail\n"
+                    "\n## Update — 2026-08-25\n\nearlier, should not show\n")
+        self._story("api", "2026-09-07", "open", "")  # start-story skeleton, unindexed
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _story(self, repo, date, slug, summary, extra=""):
+        d = self.kb / "stories" / repo / "{}-{}".format(date, slug)
+        d.mkdir(parents=True)
+        (d / "story.md").write_text(
+            "---\nrepo: {}\nslug: {}\ndate: {}\nsummary: {}\nkeys: k\n---\n## Problem\nbody\n{}".format(
+                repo, slug, date, summary, extra))
+
+    def test_digest_includes_created_and_updated_since_newest_first(self):
+        got = digest(self.kb, "2026-09-06")
+        self.assertEqual([e["slug"] for e in got], ["new", "open", "updated"])
+        self.assertEqual(got[2]["updates"], [("2026-09-06", "second pass landed")])
+        self.assertEqual(got[1]["updates"], [])
+
+    def test_digest_excludes_stories_with_no_activity_since(self):
+        self.assertNotIn("old", [e["slug"] for e in digest(self.kb, "2026-09-06")])
+        self.assertEqual(digest(self.kb, "2026-12-01"), [])

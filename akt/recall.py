@@ -72,6 +72,45 @@ def latest(kb_path, repo):
     return max(entries, key=activity) if entries else None
 
 
+_UPDATE = re.compile(r"^## Update — (\d{4}-\d{2}-\d{2})[ \t]*$", re.M)
+
+
+def digest(kb_path, since):
+    """Stories across all repos with activity on/after `since` (ISO date), newest first.
+
+    Activity = the story's date (frontmatter, else the dir-name prefix) or any
+    `## Update — YYYY-MM-DD` heading. Scans story.md files, not INDEX.md, so
+    open stories count. Each entry carries `updates`: [(date, first line)]
+    for the qualifying updates.
+    """
+    out = []
+    for f in (Path(kb_path) / "stories").glob("*/*/story.md"):
+        meta, body = parse_frontmatter(f.read_text())
+        created = meta.get("date", "") or f.parent.name[:10]
+        parts = _UPDATE.split(body)  # [pre, date1, text1, date2, text2, ...]
+        updates = []
+        for d, text in zip(parts[1::2], parts[2::2]):
+            if d >= since:
+                first = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+                updates.append((d, first))
+        dates = [d for d, _ in updates]
+        if created >= since:
+            dates.append(created)
+        if not dates:
+            continue
+        out.append({
+            "repo": meta.get("repo", "") or f.parent.parent.name,
+            "slug": meta.get("slug", ""),
+            "summary": meta.get("summary", ""),
+            "keys": split_keys(meta.get("keys", "")),
+            "path": rel_to_kb(kb_path, f),
+            "active": max(dates),
+            "updates": updates,
+        })
+    out.sort(key=lambda e: (e["active"], e["path"]), reverse=True)
+    return out
+
+
 def recall(kb_path, query, limit=3):
     qtokens = tokenize(query)
     scored = []
