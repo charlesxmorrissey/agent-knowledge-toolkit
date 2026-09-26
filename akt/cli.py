@@ -91,6 +91,7 @@ def build_parser():
     ps.add_argument("repo")
     ps.add_argument("title")
     ps.add_argument("--date", default=None)
+    ps.add_argument("--keys", default=None, help="comma-separated keys to seed the skeleton's frontmatter")
 
     pe = sub.add_parser("end-session", help="write a session handoff from stdin")
     pe.add_argument("story_path")
@@ -98,6 +99,8 @@ def build_parser():
     pf = sub.add_parser("finish-story", help="distill story.md (from stdin) and index it")
     pf.add_argument("story_path")
     pf.add_argument("--stdin", action="store_true", help="read distilled story.md body from stdin")
+    pf.add_argument("--keys", default=None,
+                    help="comma-separated keys for the frontmatter (overrides the body's keys line)")
 
     pu = sub.add_parser("update-story", help="append a dated update section (from stdin) and commit")
     pu.add_argument("story_path")
@@ -172,7 +175,7 @@ def main(argv=None):
         # KB-relative, matching what recall/latest print and what finish-story/
         # update-story resolve — an absolute path here got re-resolved against
         # knowledge_base_path and doubled (issue #39).
-        print(rel_to_kb(kb, story_mod.start_story(kb, args.repo, args.title, d)))
+        print(rel_to_kb(kb, story_mod.start_story(kb, args.repo, args.title, d, keys=args.keys)))
         return 0
 
     if args.cmd == "end-session":
@@ -186,11 +189,17 @@ def main(argv=None):
         sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else None
         try:
-            line = story_mod.finish_story(kb, sp, body)
+            line = story_mod.finish_story(kb, sp, body, keys=args.keys)
         except ValueError as err:
             sys.stderr.write(str(err) + "\n")
             sys.exit(2)
         print(line)
+        if not index_mod.parse_index_line(line)["keys"]:
+            # Indexed anyway (issue #43) — keys only widen recall's match set.
+            sys.stderr.write(
+                "warning: no keys — recall will match this story on its summary and "
+                "slug only; add some with: akt finish-story {} --keys a,b,c\n".format(args.story_path)
+            )
         # Atomic capture: index + commit happen in one CLI invocation so the
         # commit can't be left as a separate step the agent forgets to run.
         sys.stderr.write(gitkb.commit_kb(kb, "story: {}/{}".format(sp.parent.name, sp.name)) + "\n")

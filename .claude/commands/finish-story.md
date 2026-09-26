@@ -6,9 +6,10 @@ allowed-tools: Bash, Read
 # Finish Story
 
 1. Read all `sessions/NN.md` under `<story_path>/sessions` and the work's diff.
-2. Write the distilled `story.md` body. Frontmatter needs only `summary` and `keys` —
+2. Write the distilled `story.md` body. Frontmatter needs only `summary` —
    `repo`/`slug`/`date` fill in automatically from the skeleton `start-story` wrote
-   (values you do supply override them):
+   (values you do supply override them). `keys` is optional: put it in the
+   frontmatter or pass `--keys a,b,c` on the command (the flag wins if both):
    ```
    ---
    summary: <the key decision + because, one line — this is what recall matches on>
@@ -20,10 +21,10 @@ allowed-tools: Bash, Read
    ## Outcome
    ## Links
    ```
-3. Pipe it in. The CLI validates required sections + non-empty summary/keys BEFORE
+3. Pipe it in. The CLI validates required sections + a non-empty summary BEFORE
    writing (a body missing sections leaves the existing story.md untouched; a body
-   with all sections but blank summary/keys IS written — fill in the frontmatter and
-   re-run without `--stdin`), appends the INDEX.md line, **and commits the knowledge
+   with all sections but no summary IS written — fill in the frontmatter and
+   re-run without `--stdin`; a body with no keys is indexed with a stderr warning), appends the INDEX.md line, **and commits the knowledge
    base** (pushing if a remote exists) in the same invocation — so capture is atomic;
    there is no separate commit step to forget:
 

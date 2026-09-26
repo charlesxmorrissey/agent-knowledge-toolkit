@@ -128,7 +128,7 @@ EOF
 # 3. Work done — write the distilled record, index it, and commit (+ push)
 #    the knowledge base, all in one call:
 #    (repo/slug/date fill in from the start-story skeleton; frontmatter
-#    needs only summary + keys):
+#    needs only summary — keys are optional, here or via --keys a,b,c):
 akt finish-story "$STORY" --stdin <<'EOF'
 ---
 summary: Moved refresh from cron to lazy-on-401 to stop thundering-herd reauth
@@ -161,9 +161,9 @@ to today; it's pinned above only so the paths in the example line up.)
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `install`                                               | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files)                           |
 | `init <path>`                                           | Create a knowledge base at `<path>` and record it in config                                                                                                      |
-| `start-story <repo> "<title>" [--date YYYY-MM-DD]`      | Scaffold a story dir with `story.md` and an empty `sessions/`; prints the KB-relative path                                                                       |
+| `start-story <repo> "<title>" [--date YYYY-MM-DD] [--keys a,b,c]` | Scaffold a story dir with `story.md` (keys seeded if given) and an empty `sessions/`; prints the KB-relative path                                            |
 | `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin); the first is `01.md`                                                                                  |
-| `finish-story <story_path> --stdin`                     | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step |
+| `finish-story <story_path> [--stdin] [--keys a,b,c]`    | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step; `--keys` sets/overrides the frontmatter keys, and a story with no keys is indexed with a warning |
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
 | `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |

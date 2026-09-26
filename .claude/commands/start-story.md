@@ -8,7 +8,7 @@ allowed-tools: Bash
 1. Determine the current repo name (the basename of the repo root) and a short title for the task.
 2. Run:
    ```bash
-   akt start-story <repo> "<short title>"
+   akt start-story <repo> "<short title>" [--keys a,b,c]
    ```
    It prints the created story directory (relative to the knowledge base, the same
    form `recall` prints and `finish-story`/`update-story` accept) and seeds `story.md` (an empty `sessions/`

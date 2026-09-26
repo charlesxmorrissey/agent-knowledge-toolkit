@@ -1,7 +1,7 @@
 """Story lifecycle: start, per-session handoff, finish (distill + index)."""
 from pathlib import Path
 
-from akt.frontmatter import build_frontmatter, parse_frontmatter
+from akt.frontmatter import build_frontmatter, parse_frontmatter, split_keys
 from akt.paths import slugify, story_dir, next_session_number, rel_to_kb
 from akt.index import build_index_line, append_index_line
 
@@ -28,7 +28,10 @@ Watch out:
 """
 
 _REQUIRED_SECTIONS = ["## Problem", "## Decisions", "## Outcome"]
-_REQUIRED_META = ["repo", "slug", "summary", "keys"]
+# keys is deliberately NOT required: it is a recall aid, and recall already
+# tokenizes the slug, so an absent keys line costs little — while requiring
+# it left stories half-written whenever a caller omitted it (issue #43).
+_REQUIRED_META = ["repo", "slug", "summary"]
 
 
 def _validate(text, meta):
@@ -45,13 +48,18 @@ def _validate(text, meta):
         raise ValueError("story.md " + "; ".join(problems))
 
 
-def start_story(kb_path, repo, title, date):
+def _normalize_keys(keys):
+    return ", ".join(split_keys(keys or ""))
+
+
+def start_story(kb_path, repo, title, date, keys=None):
     slug = slugify(title)
     d = story_dir(kb_path, repo, date, slug)
     if d.exists():
         raise FileExistsError(str(d))
     (d / "sessions").mkdir(parents=True)
-    meta = {"repo": repo, "slug": slug, "date": date, "summary": "", "keys": ""}
+    meta = {"repo": repo, "slug": slug, "date": date, "summary": "",
+            "keys": _normalize_keys(keys)}
     (d / "story.md").write_text(build_frontmatter(meta) + _STORY_TEMPLATE.format(title=title))
     # Session handoffs are written by end_session (starting at 01.md), not pre-seeded —
     # so a single-session story has an empty sessions/ rather than a blank placeholder.
@@ -84,7 +92,8 @@ def update_story(story_path, body, date):
     return story_md
 
 
-def finish_story(kb_path, story_path, body=None):
+def finish_story(kb_path, story_path, body=None, keys=None):
+    """Write (if `body`) and index story.md. `keys` overrides the frontmatter's."""
     story_path = Path(story_path)
     story_md = story_path / "story.md"
     if body is not None:
@@ -94,9 +103,19 @@ def finish_story(kb_path, story_path, body=None):
         old_meta, _ = parse_frontmatter(story_md.read_text()) if story_md.exists() else ({}, "")
         new_meta, new_body = parse_frontmatter(body)
         old_meta.update(new_meta)
-        text = build_frontmatter(old_meta) + "\n" + new_body
+        if keys is not None:
+            old_meta["keys"] = _normalize_keys(keys)
+        # Drop blank values (the skeleton's empty summary/keys): a blank
+        # `keys: ` line in a written-but-unindexed story collided with the
+        # caller's obvious repair, an insert of the missing line (issue #43).
+        meta = {k: v for k, v in old_meta.items() if v.strip()}
+        text = build_frontmatter(meta) + "\n" + new_body
     else:
         text = story_md.read_text()
+        if keys is not None:
+            meta, existing_body = parse_frontmatter(text)
+            meta["keys"] = _normalize_keys(keys)
+            text = build_frontmatter(meta) + "\n" + existing_body
     meta, _ = parse_frontmatter(text)
     try:
         _validate(text, meta)
@@ -113,10 +132,10 @@ def finish_story(kb_path, story_path, body=None):
                 "frontmatter and re-run finish-story without --stdin".format(err)
             )
         raise ValueError(
-            "{}; nothing written — the --stdin body must carry summary/keys in "
+            "{}; nothing written — the --stdin body must carry a summary in "
             "its frontmatter and all required sections".format(err)
         )
-    if body is not None:
+    if body is not None or keys is not None:
         story_md.write_text(text)
     line = build_index_line(meta, rel_to_kb(kb_path, story_md))
     append_index_line(kb_path, line)
