@@ -42,11 +42,11 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("indexed", out)
 
-    def _seed_story(self, date="2026-06-05", slug="auth", summary="token refresh"):
+    def _seed_story(self, date="2026-06-05", slug="auth", summary="token refresh", keys="auth, token"):
         story = self.kb / "stories" / "webapp" / "{}-{}".format(date, slug)
         story.mkdir(parents=True)
         (story / "story.md").write_text(
-            "---\nrepo: webapp\nslug: {}\nsummary: {}\nkeys: auth, token\n---\n## Problem\n".format(slug, summary)
+            "---\nrepo: webapp\nslug: {}\nsummary: {}\nkeys: {}\n---\n## Problem\n".format(slug, summary, keys)
         )
         return story
 
@@ -286,6 +286,40 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("stale candidates", out)
         self.assertIn("[old]", out)
+
+    def test_finish_story_keys_flag_fills_frontmatter(self):
+        # issue #43
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        body = "---\nsummary: token refresh\n---\n## Problem\nx\n## Decisions\nx\n## Outcome\nx\n"
+        rc, _ = self._run_stdin(
+            ["finish-story", "webapp/2026-06-05-auth", "--stdin", "--keys", "auth,token"], body
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("keys: auth, token", (story / "story.md").read_text())
+
+    def test_finish_story_without_keys_indexes_and_warns(self):
+        # issue #43: missing keys is a warning on stderr, not a half-written story.
+        import io as _io
+        from contextlib import redirect_stderr
+        self._run(["init", str(self.kb)])
+        self._seed_story(keys="")
+        body = "---\nsummary: token refresh\n---\n## Problem\nx\n## Decisions\nx\n## Outcome\nx\n"
+        err = _io.StringIO()
+        with redirect_stderr(err):
+            rc, out = self._run_stdin(
+                ["finish-story", "webapp/2026-06-05-auth", "--stdin"], body
+            )
+        self.assertEqual(rc, 0)
+        self.assertIn("[webapp/auth]", out)
+        self.assertIn("no keys", err.getvalue())
+
+    def test_start_story_keys_flag_seeds_skeleton(self):
+        self._run(["init", str(self.kb)])
+        rc, out = self._run(["start-story", "webapp", "Auth", "--date", "2026-06-05",
+                             "--keys", "auth, token"])
+        self.assertEqual(rc, 0)
+        self.assertIn("keys: auth, token", (self.kb / out / "story.md").read_text())
 
 
 if __name__ == "__main__":

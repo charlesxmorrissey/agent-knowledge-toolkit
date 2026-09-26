@@ -91,7 +91,7 @@ class StoryTest(unittest.TestCase):
             finish_story(self.kb, d, bad)
         msg = str(ctx.exception)
         self.assertIn("missing sections: ['## Decisions', '## Outcome']", msg)
-        self.assertIn("frontmatter missing: ['summary', 'keys']", msg)
+        self.assertIn("frontmatter missing: ['summary']", msg)
 
     def test_finish_story_rejects_empty_summary(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
@@ -99,9 +99,9 @@ class StoryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             finish_story(self.kb, d, bad)
 
-    def test_finish_story_rejects_empty_repo_slug_keys(self):
+    def test_finish_story_rejects_empty_repo_slug(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
-        for missing in ("repo", "slug", "keys"):
+        for missing in ("repo", "slug"):
             meta = {"repo": "webapp", "slug": "auth", "date": "2026-06-05",
                     "summary": "s", "keys": "a, b"}
             meta[missing] = ""
@@ -137,7 +137,7 @@ class StoryTest(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             finish_story(self.kb, d, body)
         msg = str(ctx.exception)
-        self.assertIn("frontmatter missing: ['summary', 'keys']", msg)
+        self.assertIn("frontmatter missing: ['summary']", msg)
         self.assertIn("written", msg)
         self.assertIn("real text", (d / "story.md").read_text())
         self.assertEqual(read_index_lines(self.kb), [])
@@ -162,6 +162,76 @@ class StoryTest(unittest.TestCase):
         self.assertEqual(meta["repo"], "webapp")
         self.assertEqual(meta["date"], "2026-06-05")
         self.assertEqual(meta["summary"], "Lazy refresh on 401")
+
+    def test_finish_story_indexes_without_keys(self):
+        # issue #43: keys are a recall aid, not a requirement — a body with a
+        # summary but no keys is written AND indexed (recall still matches on
+        # summary and slug), instead of being left half-written.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = (
+            "---\nsummary: Lazy refresh on 401\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n## Links\n"
+        )
+        line = finish_story(self.kb, d, body)
+        self.assertIn("[webapp/auth]", line)
+        entry = parse_index_line(read_index_lines(self.kb)[0])
+        self.assertEqual(entry["keys"], [])
+        self.assertEqual(entry["summary"], "Lazy refresh on 401")
+
+    def test_finish_story_keys_arg_fills_frontmatter(self):
+        # issue #43: --keys lets the caller supply keys without carrying
+        # frontmatter in the stdin body.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = (
+            "---\nsummary: Lazy refresh on 401\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        )
+        finish_story(self.kb, d, body, keys="auth,token , refresh")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["keys"], "auth, token, refresh")
+        entry = parse_index_line(read_index_lines(self.kb)[0])
+        self.assertEqual(entry["keys"], ["auth", "token", "refresh"])
+
+    def test_finish_story_keys_arg_overrides_body_keys(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = (
+            "---\nsummary: s\nkeys: from-body\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        )
+        finish_story(self.kb, d, body, keys="from-arg")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["keys"], "from-arg")
+
+    def test_finish_story_keys_arg_works_without_stdin_body(self):
+        # A story.md already on disk that lacks keys can be indexed with
+        # keys supplied at the CLI, no body needed.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        (d / "story.md").write_text(
+            "---\nrepo: webapp\nslug: auth\ndate: 2026-06-05\nsummary: s\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        )
+        finish_story(self.kb, d, None, keys="auth")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["keys"], "auth")
+        self.assertEqual(parse_index_line(read_index_lines(self.kb)[0])["keys"], ["auth"])
+
+    def test_start_story_seeds_keys(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05", keys="auth, token")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["keys"], "auth, token")
+
+    def test_finish_story_unindexed_write_omits_blank_frontmatter(self):
+        # issue #43: the written-but-unindexed story.md must not carry blank
+        # `summary: ` / `keys: ` lines inherited from the skeleton — they
+        # collide with the caller's obvious repair (insert the missing line).
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "## Problem\nreal text\n## Decisions\n- a\n## Outcome\nok\n## Links\n"
+        with self.assertRaises(ValueError):
+            finish_story(self.kb, d, body)
+        text = (d / "story.md").read_text()
+        self.assertNotIn("summary:", text)
+        self.assertNotIn("keys:", text)
+        self.assertIn("slug: auth", text)
 
 
 if __name__ == "__main__":
