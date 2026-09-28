@@ -66,6 +66,25 @@ def start_story(kb_path, repo, title, date, keys=None):
     return d
 
 
+def is_open_story(kb_path, rel_path):
+    """True if `rel_path` (KB-relative) lies inside a story that was started but
+    not finished — its story.md still has the skeleton's empty summary.
+
+    start-story never commits, so an open story sits untracked until
+    finish-story indexes and commits it. That is the normal mid-story state,
+    not a lost story (issue #45). A story.md that already carries a summary is
+    written; if that is uncommitted, something really was left unsaved.
+    """
+    parts = Path(rel_path).parts
+    if len(parts) < 3 or parts[0] != "stories":
+        return False
+    story_md = Path(kb_path).joinpath(*parts[:3]) / "story.md"
+    if not story_md.is_file():
+        return False
+    meta, _ = parse_frontmatter(story_md.read_text())
+    return not meta.get("summary", "").strip()
+
+
 def end_session(story_path, body):
     sessions = Path(story_path) / "sessions"
     sessions.mkdir(exist_ok=True)

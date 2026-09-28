@@ -4,7 +4,7 @@ from pathlib import Path
 
 from akt.frontmatter import parse_frontmatter
 from akt.index import read_index_lines, parse_index_line
-from akt.story import start_story, end_session, finish_story, update_story
+from akt.story import start_story, end_session, finish_story, update_story, is_open_story
 
 
 class StoryTest(unittest.TestCase):
@@ -15,6 +15,24 @@ class StoryTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_is_open_story_true_only_for_unfinished_skeleton(self):
+        d = start_story(self.kb, "webapp", "Auth Token Refresh", "2026-06-05")
+        rel = "stories/webapp/2026-06-05-auth-token-refresh"
+        # The skeleton and anything under it (a session handoff) is an open story.
+        self.assertTrue(is_open_story(self.kb, rel + "/story.md"))
+        end_session(d, "# Session 1\nState: x\n")
+        self.assertTrue(is_open_story(self.kb, rel + "/sessions/01.md"))
+        # Paths outside stories/ or without a story.md are not.
+        self.assertFalse(is_open_story(self.kb, "INDEX.md"))
+        self.assertFalse(is_open_story(self.kb, "stories/webapp/2026-06-06-ghost/notes.md"))
+        # Once story.md carries a summary it's written — if still uncommitted,
+        # that IS the "prior story may not have been saved" case.
+        (d / "story.md").write_text(
+            "---\nrepo: webapp\nslug: auth-token-refresh\nsummary: done\nkeys: a\n---\n"
+            "## Problem\nx\n## Decisions\ny\n## Outcome\nz\n"
+        )
+        self.assertFalse(is_open_story(self.kb, rel + "/story.md"))
 
     def test_start_story_scaffolds(self):
         d = start_story(self.kb, "webapp", "Auth Token Refresh", "2026-06-05")

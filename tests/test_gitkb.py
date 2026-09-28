@@ -34,10 +34,26 @@ class GitkbTest(unittest.TestCase):
     def test_commit_when_clean_is_noop(self):
         self.assertIn("nothing to commit", gitkb.commit_kb(self.kb, "m"))
 
+    def test_status_entries_lists_untracked_files_individually(self):
+        # Untracked dirs must not be collapsed to "?? stories/": the caller
+        # needs per-file paths to tell an open story from stray files (issue #45).
+        story = self.kb / "stories" / "webapp" / "2026-06-05-auth"
+        story.mkdir(parents=True)
+        (story / "story.md").write_text("x")
+        (self.kb / "INDEX.md").write_text("i")
+        _run("git", "add", "INDEX.md", cwd=self.kb)
+        _run("git", "commit", "-q", "-m", "i", cwd=self.kb)
+        (self.kb / "INDEX.md").write_text("changed")
+        self.assertEqual(
+            sorted(gitkb.status_entries(self.kb)),
+            [(" M", "INDEX.md"), ("??", "stories/webapp/2026-06-05-auth/story.md")],
+        )
+
     def test_non_repo_is_graceful(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertFalse(gitkb.is_repo(d))
             self.assertFalse(gitkb.is_dirty(d))
+            self.assertEqual(gitkb.status_entries(d), [])
             self.assertIn("not a git repo", gitkb.commit_kb(d, "m"))
 
 

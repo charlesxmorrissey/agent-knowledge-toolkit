@@ -15,8 +15,19 @@ from akt import learn as learn_mod
 from akt.paths import rel_to_kb
 
 
+def _unsaved_paths(kb):
+    """KB paths with uncommitted changes, minus files inside an open story.
+
+    An untracked skeleton (and its session handoffs) is what start-story is
+    supposed to leave behind until finish-story commits it (issue #45); only
+    modified tracked files and untracked files outside an open story count.
+    """
+    return [path for code, path in gitkb.status_entries(kb)
+            if not (code == "??" and story_mod.is_open_story(kb, path))]
+
+
 def _warn_if_dirty(kb):
-    if gitkb.is_dirty(kb):
+    if _unsaved_paths(kb):
         sys.stderr.write(
             "⚠ knowledge base has uncommitted changes — a prior story "
             "may not have been saved; run /finish-story or commit it\n"
