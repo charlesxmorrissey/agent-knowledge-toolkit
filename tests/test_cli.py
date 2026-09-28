@@ -1,7 +1,7 @@
 import io
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 
 from akt import config
@@ -27,6 +27,19 @@ class CliTest(unittest.TestCase):
             rc = main(argv)
         return rc, buf.getvalue().strip()
 
+    def _run_stderr(self, argv):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            main(argv)
+        return err.getvalue()
+
+    def _git_kb(self):
+        import subprocess
+        for args in (["init", "-q"], ["config", "user.email", "t@t.test"],
+                     ["config", "user.name", "t"], ["add", "-A"],
+                     ["commit", "-q", "-m", "init"]):
+            subprocess.run(["git", "-C", str(self.kb), *args], check=True)
+
     def test_init_and_start_and_reindex(self):
         rc, _ = self._run(["init", str(self.kb)])
         self.assertEqual(rc, 0)
@@ -41,6 +54,37 @@ class CliTest(unittest.TestCase):
         rc, out = self._run(["reindex"])
         self.assertEqual(rc, 0)
         self.assertIn("indexed", out)
+
+    def test_open_story_skeleton_does_not_trigger_dirty_warning(self):
+        # issue #45: start-story leaves its skeleton untracked until finish-story
+        # commits it. That is the normal mid-story state, not a lost story.
+        self._run(["init", str(self.kb)])
+        self._git_kb()
+        rc, rel = self._run(["start-story", "webapp", "Auth", "--date", "2026-06-05"])
+        self.assertEqual(rc, 0)
+        for argv in (["learn", "list", "--status", "candidate", "--compact"],
+                     ["recall", "auth"], ["latest", "webapp"],
+                     ["start-story", "webapp", "Second", "--date", "2026-06-06"]):
+            self.assertNotIn("uncommitted", self._run_stderr(argv), argv)
+        # A session handoff under the open story is still mid-story state.
+        (self.kb / rel / "sessions" / "01.md").write_text("# Session 1\n")
+        self.assertNotIn("uncommitted", self._run_stderr(["recall", "auth"]))
+
+    def test_written_but_unfinished_story_still_warns(self):
+        self._run(["init", str(self.kb)])
+        self._git_kb()
+        _, rel = self._run(["start-story", "webapp", "Auth", "--date", "2026-06-05"])
+        (self.kb / rel / "story.md").write_text(
+            "---\nrepo: webapp\nslug: auth\nsummary: distilled but never finished\n---\n"
+            "## Problem\nx\n## Decisions\ny\n## Outcome\nz\n"
+        )
+        self.assertIn("uncommitted", self._run_stderr(["recall", "auth"]))
+
+    def test_modified_tracked_file_still_warns(self):
+        self._run(["init", str(self.kb)])
+        self._git_kb()
+        (self.kb / "INDEX.md").write_text("hand-edited\n")
+        self.assertIn("uncommitted", self._run_stderr(["recall", "auth"]))
 
     def _seed_story(self, date="2026-06-05", slug="auth", summary="token refresh", keys="auth, token"):
         story = self.kb / "stories" / "webapp" / "{}-{}".format(date, slug)

@@ -232,8 +232,10 @@ python3 -m unittest discover -s tests
   `INDEX.md`, `reindex`, config, `init`.
 - `akt` launcher + global slash commands — use it from any repo.
 - `finish-story` commits **and pushes** the knowledge base in the same call — capture is
-  atomic, with no separate commit step to forget. `recall` / `start-story` warn (on stderr)
-  when the KB has uncommitted changes, so a half-saved story never rots silently.
+  atomic, with no separate commit step to forget. `recall` / `start-story` / `learn` warn (on
+  stderr) when the KB has uncommitted changes, so a half-saved story never rots silently. A
+  story that is merely open (started, not yet finished) is the expected mid-story state and
+  does not trigger the warning.
 - Optional auto-recall/capture rule (`claude/akt-rule.md`) — the agent runs recall before
   a task and captures a story when work wraps, without you invoking anything.
 - Lessons from first heavy real-world use: `update-story` (mid-engagement appends, atomic
