@@ -186,7 +186,7 @@ to today; it's pinned above only so the paths in the example line up.)
 
 `.claude/commands/` provides thin wrappers that add the model judgment around the CLI:
 
-- `/resume` — start of session: repo state, `akt latest`, read the story, pick up where you left off
+- `/resume` — start of session: repo state, open GitHub issues, `akt latest`, read the story, pick up where you left off
 - `/start-story` — begin a story for the current repo
 - `/update-story` — append a dated update to an open story and commit it
 - `/finish-story` — distill the story, index it, and commit + push the knowledge base
