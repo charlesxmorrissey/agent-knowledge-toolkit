@@ -104,7 +104,7 @@ def build_parser():
     ps.add_argument("--date", default=None)
     ps.add_argument("--keys", default=None, help="comma-separated keys to seed the skeleton's frontmatter")
 
-    pe = sub.add_parser("end-session", help="write a session handoff from stdin")
+    pe = sub.add_parser("end-session", help="write a session handoff from stdin and commit")
     pe.add_argument("story_path")
 
     pf = sub.add_parser("finish-story", help="distill story.md (from stdin) and index it")
@@ -190,9 +190,15 @@ def main(argv=None):
         return 0
 
     if args.cmd == "end-session":
-        sp = _resolve_story_dir(config.get("knowledge_base_path"), args.story_path)
+        kb = _require_kb()
+        sp = _resolve_story_dir(kb, args.story_path)
         body = "" if sys.stdin.isatty() else sys.stdin.read()
         print(story_mod.end_session(sp, body))
+        # Same atomic-capture rule as finish-story/update-story (issue #48): a
+        # handoff exists to outlive the session, so it is committed and pushed
+        # in the same invocation rather than left as a step the agent must
+        # remember. On an open story this also commits the untracked skeleton.
+        sys.stderr.write(gitkb.commit_kb(kb, "session: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0
 
     if args.cmd == "finish-story":

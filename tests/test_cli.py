@@ -365,6 +365,24 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("keys: auth, token", (self.kb / out / "story.md").read_text())
 
+    def test_end_session_commits_the_handoff(self):
+        # Issue #48: end-session wrote sessions/NN.md but, unlike its siblings
+        # (finish-story, update-story, learn add), never committed it, so the
+        # handoff sat untracked after the session it was meant to outlive.
+        import subprocess
+        self._run(["init", str(self.kb)])
+        self._git_kb()
+        _, story = self._run(["start-story", "webapp", "Handoff", "--date", "2026-06-05"])
+        rc, out = self._run_stdin(["end-session", story], "State: midway\nNext: y\n")
+        self.assertEqual(rc, 0)
+        self.assertTrue((self.kb / story / "sessions" / "01.md").is_file())
+        status = subprocess.run(["git", "-C", str(self.kb), "status", "--porcelain"],
+                                capture_output=True, text=True).stdout
+        self.assertEqual(status, "", "handoff left uncommitted: " + status)
+        msg = subprocess.run(["git", "-C", str(self.kb), "log", "-1", "--format=%s"],
+                             capture_output=True, text=True).stdout
+        self.assertIn("session: webapp/2026-06-05-handoff", msg)
+
 
 if __name__ == "__main__":
     unittest.main()

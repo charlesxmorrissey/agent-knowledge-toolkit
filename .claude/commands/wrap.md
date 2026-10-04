@@ -17,7 +17,7 @@ End-of-session routine. Do these in order:
      `## Links`.
    - Mid-story with nothing distillable yet → leave a handoff instead:
      `akt end-session <story_path>` with State / Done / Next / Watch out
-     on stdin.
+     on stdin (commits + pushes in the same call, like `update-story`).
 2. **Learnings pass**: run `akt learn list --status candidate --compact` and
    compare the session's transferable lessons (full text of a likely match via
    `akt learn show <id>`) — matches get
