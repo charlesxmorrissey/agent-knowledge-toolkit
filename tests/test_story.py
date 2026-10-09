@@ -251,6 +251,48 @@ class StoryTest(unittest.TestCase):
         self.assertNotIn("keys:", text)
         self.assertIn("slug: auth", text)
 
+    def test_finish_story_summary_arg_fills_frontmatter(self):
+        # issue #51: the stdin body need not carry any frontmatter when the
+        # summary comes in on the flag — one call, no second edit.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "## Problem\nreal text\n## Decisions\n- a\n## Outcome\nok\n## Links\n"
+        line = finish_story(self.kb, d, body, summary="Lazy refresh on 401", keys="auth,token")
+        self.assertEqual(parse_index_line(line)["summary"], "Lazy refresh on 401")
+        text = (d / "story.md").read_text()
+        self.assertIn("summary: Lazy refresh on 401", text)
+        self.assertIn("keys: auth, token", text)
+        self.assertIn("slug: auth", text)
+        self.assertEqual(len(read_index_lines(self.kb)), 1)
+
+    def test_finish_story_summary_arg_overrides_body_summary(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = ("---\nsummary: from the body\n---\n"
+                "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n")
+        line = finish_story(self.kb, d, body, summary="from the flag")
+        self.assertEqual(parse_index_line(line)["summary"], "from the flag")
+
+    def test_finish_story_summary_arg_repairs_written_unindexed_story(self):
+        # issue #51: after the written-but-NOT-indexed failure, a re-run with
+        # --summary (no --stdin) indexes the story with no file edit.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "## Problem\nreal text\n## Decisions\n- a\n## Outcome\nok\n## Links\n"
+        with self.assertRaises(ValueError) as ctx:
+            finish_story(self.kb, d, body)
+        self.assertIn("--summary", str(ctx.exception))
+        line = finish_story(self.kb, d, None, summary="Lazy refresh on 401")
+        self.assertEqual(parse_index_line(line)["summary"], "Lazy refresh on 401")
+        text = (d / "story.md").read_text()
+        self.assertIn("summary: Lazy refresh on 401", text)
+        self.assertIn("real text", text)
+        self.assertEqual(len(read_index_lines(self.kb)), 1)
+
+    def test_finish_story_blank_summary_arg_is_still_missing(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "## Problem\nreal text\n## Decisions\n- a\n## Outcome\nok\n## Links\n"
+        with self.assertRaises(ValueError) as ctx:
+            finish_story(self.kb, d, body, summary="   ")
+        self.assertIn("frontmatter missing: ['summary']", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

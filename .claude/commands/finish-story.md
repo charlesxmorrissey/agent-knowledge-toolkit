@@ -6,33 +6,37 @@ allowed-tools: Bash, Read
 # Finish Story
 
 1. Read all `sessions/NN.md` under `<story_path>/sessions` and the work's diff.
-2. Write the distilled `story.md` body. Frontmatter needs only `summary` —
-   `repo`/`slug`/`date` fill in automatically from the skeleton `start-story` wrote
-   (values you do supply override them). `keys` is optional: put it in the
-   frontmatter or pass `--keys a,b,c` on the command (the flag wins if both):
+2. Write the distilled `story.md` body. `repo`/`slug`/`date` fill in
+   automatically from the skeleton `start-story` wrote. The only required
+   metadata is the `summary` (the key decision + because, one line — this is
+   what recall matches on); `keys` are optional. Pass both on the flags so the
+   body carries no frontmatter at all (a frontmatter block atop the body also
+   works; a flag wins over the body's line if both are given):
    ```
-   ---
-   summary: <the key decision + because, one line — this is what recall matches on>
-   keys: <comma, separated, keywords>
-   ---
    ## Problem
    ## Decisions
    - <decision> — because <why> — rejected <alternative>
    ## Outcome
    ## Links
    ```
-3. Pipe it in. The CLI validates required sections + a non-empty summary BEFORE
-   writing (a body missing sections leaves the existing story.md untouched; a body
-   with all sections but no summary IS written — fill in the frontmatter and
-   re-run without `--stdin`; a body with no keys is indexed with a stderr warning), appends the INDEX.md line, **and commits the knowledge
-   base** (pushing if a remote exists) in the same invocation — so capture is atomic;
-   there is no separate commit step to forget:
+3. Pipe it in — one call:
 
    ```bash
-   akt finish-story <story_path> --stdin <<'EOF'
-   <the full story.md content above>
+   akt finish-story <story_path> --stdin \
+     --summary "<one line: key decision + because>" \
+     --keys <comma,separated,keywords> <<'EOF'
+   <the story.md body above>
    EOF
    ```
+
+   The CLI validates required sections + a non-empty summary BEFORE writing (a
+   body missing sections leaves the existing story.md untouched; a body with all
+   sections but no summary IS written — repair with
+   `akt finish-story <story_path> --summary "..."` (no `--stdin`, no file edit);
+   a body with no keys is indexed with a stderr warning), appends the INDEX.md
+   line, **and commits the knowledge base** (pushing if a remote exists) in the
+   same invocation — so capture is atomic; there is no separate commit step to
+   forget.
 
    The commit status is printed to stderr. It never fails the flow when there is no
    remote or you're offline (the story is still committed locally).
