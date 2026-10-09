@@ -110,6 +110,9 @@ def build_parser():
     pf = sub.add_parser("finish-story", help="distill story.md (from stdin) and index it")
     pf.add_argument("story_path")
     pf.add_argument("--stdin", action="store_true", help="read distilled story.md body from stdin")
+    pf.add_argument("--summary", default=None,
+                    help="one-line summary for the frontmatter (overrides the body's summary line) "
+                         "— what recall matches on")
     pf.add_argument("--keys", default=None,
                     help="comma-separated keys for the frontmatter (overrides the body's keys line)")
 
@@ -206,9 +209,10 @@ def main(argv=None):
         sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else None
         try:
-            line = story_mod.finish_story(kb, sp, body, keys=args.keys)
+            line = story_mod.finish_story(kb, sp, body, keys=args.keys, summary=args.summary)
         except ValueError as err:
-            sys.stderr.write(str(err) + "\n")
+            # The repair hint names the real path so it can be pasted as-is.
+            sys.stderr.write(str(err).replace("<story_path>", args.story_path) + "\n")
             sys.exit(2)
         print(line)
         if not index_mod.parse_index_line(line)["keys"]:

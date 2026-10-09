@@ -342,6 +342,21 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("keys: auth, token", (story / "story.md").read_text())
 
+    def test_finish_story_summary_flag_with_stdin_is_one_call(self):
+        # issue #51
+        self._run(["init", str(self.kb)])
+        story = self._seed_story(summary="", keys="")
+        body = "## Problem\nx\n## Decisions\nx\n## Outcome\nx\n"
+        rc, out = self._run_stdin(
+            ["finish-story", "webapp/2026-06-05-auth", "--stdin",
+             "--summary", "token refresh", "--keys", "auth,token"], body
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("[webapp/auth]", out)
+        text = (story / "story.md").read_text()
+        self.assertIn("summary: token refresh", text)
+        self.assertIn("keys: auth, token", text)
+
     def test_finish_story_without_keys_indexes_and_warns(self):
         # issue #43: missing keys is a warning on stderr, not a half-written story.
         import io as _io

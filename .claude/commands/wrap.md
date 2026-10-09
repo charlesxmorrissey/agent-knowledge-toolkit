@@ -13,8 +13,9 @@ End-of-session routine. Do these in order:
      (appends a dated `## Update` and commits + pushes in one call).
    - The problem statement changed (a decision that would be recalled on its
      own) → `akt start-story <repo> "<short title>"` then
-     `akt finish-story <story_path> --stdin`. Link related stories under
-     `## Links`.
+     `akt finish-story <story_path> --stdin --summary "..." --keys a,b,c`
+     (the body on stdin, the summary and keys on the flags — one call).
+     Link related stories under `## Links`.
    - Mid-story with nothing distillable yet → leave a handoff instead:
      `akt end-session <story_path>` with State / Done / Next / Watch out
      on stdin (commits + pushes in the same call, like `update-story`).

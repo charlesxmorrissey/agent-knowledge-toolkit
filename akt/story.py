@@ -52,6 +52,14 @@ def _normalize_keys(keys):
     return ", ".join(split_keys(keys or ""))
 
 
+def _apply_overrides(meta, keys, summary):
+    """Flag values win over the frontmatter's (the flag is the explicit ask)."""
+    if keys is not None:
+        meta["keys"] = _normalize_keys(keys)
+    if summary is not None:
+        meta["summary"] = summary.strip()
+
+
 def start_story(kb_path, repo, title, date, keys=None):
     slug = slugify(title)
     d = story_dir(kb_path, repo, date, slug)
@@ -111,8 +119,11 @@ def update_story(story_path, body, date):
     return story_md
 
 
-def finish_story(kb_path, story_path, body=None, keys=None):
-    """Write (if `body`) and index story.md. `keys` overrides the frontmatter's."""
+def finish_story(kb_path, story_path, body=None, keys=None, summary=None):
+    """Write (if `body`) and index story.md. `keys` / `summary` override the
+    frontmatter's, so a --stdin body needs no frontmatter at all when both
+    come in on flags, and a written-but-unindexed story can be repaired with
+    `--summary` alone, no file edit (issue #51)."""
     story_path = Path(story_path)
     story_md = story_path / "story.md"
     if body is not None:
@@ -122,8 +133,7 @@ def finish_story(kb_path, story_path, body=None, keys=None):
         old_meta, _ = parse_frontmatter(story_md.read_text()) if story_md.exists() else ({}, "")
         new_meta, new_body = parse_frontmatter(body)
         old_meta.update(new_meta)
-        if keys is not None:
-            old_meta["keys"] = _normalize_keys(keys)
+        _apply_overrides(old_meta, keys, summary)
         # Drop blank values (the skeleton's empty summary/keys): a blank
         # `keys: ` line in a written-but-unindexed story collided with the
         # caller's obvious repair, an insert of the missing line (issue #43).
@@ -131,9 +141,9 @@ def finish_story(kb_path, story_path, body=None, keys=None):
         text = build_frontmatter(meta) + "\n" + new_body
     else:
         text = story_md.read_text()
-        if keys is not None:
+        if keys is not None or summary is not None:
             meta, existing_body = parse_frontmatter(text)
-            meta["keys"] = _normalize_keys(keys)
+            _apply_overrides(meta, keys, summary)
             text = build_frontmatter(meta) + "\n" + existing_body
     meta, _ = parse_frontmatter(text)
     try:
@@ -147,14 +157,15 @@ def finish_story(kb_path, story_path, body=None, keys=None):
             # than discard the distilled text (issue #39). Not indexed yet.
             story_md.write_text(text)
             raise ValueError(
-                "{}; body written to story.md but NOT indexed — fill in the "
-                "frontmatter and re-run finish-story without --stdin".format(err)
+                "{}; body written to story.md but NOT indexed — re-run without "
+                "--stdin and pass the summary (and keys) on the flags: "
+                "akt finish-story <story_path> --summary \"...\" [--keys a,b,c]".format(err)
             )
         raise ValueError(
-            "{}; nothing written — the --stdin body must carry a summary in "
-            "its frontmatter and all required sections".format(err)
+            "{}; nothing written — the --stdin body must carry all required "
+            "sections and a summary (in its frontmatter or via --summary)".format(err)
         )
-    if body is not None or keys is not None:
+    if body is not None or keys is not None or summary is not None:
         story_md.write_text(text)
     line = build_index_line(meta, rel_to_kb(kb_path, story_md))
     append_index_line(kb_path, line)
