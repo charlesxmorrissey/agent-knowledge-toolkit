@@ -173,6 +173,31 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("token refresh", (story / "story.md").read_text())
 
+    def test_update_story_accepts_kb_dirname_prefixed_path(self):
+        # issue #53: session notes carry the checkout name (knowledge/stories/...).
+        self._run(["init", str(self.kb)])
+        story = self._seed_story()
+        rc, _ = self._run_stdin(
+            ["update-story", "knowledge/stories/webapp/2026-06-05-auth/story.md",
+             "--stdin", "--date", "2026-06-06"],
+            "KB-dirname update.\n",
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("KB-dirname update.", (story / "story.md").read_text())
+
+    def test_bare_repo_named_like_kb_dir_still_resolves(self):
+        # A repo called "knowledge" keeps its bare form: only <kb>/stories/ is stripped.
+        self._run(["init", str(self.kb)])
+        story = self.kb / "stories" / "knowledge" / "2026-06-05-same-name"
+        story.mkdir(parents=True)
+        (story / "story.md").write_text("---\nrepo: knowledge\nslug: same-name\n---\n## Problem\n")
+        rc, _ = self._run_stdin(
+            ["update-story", "knowledge/2026-06-05-same-name", "--stdin", "--date", "2026-06-06"],
+            "Same-name update.\n",
+        )
+        self.assertEqual(rc, 0)
+        self.assertIn("Same-name update.", (story / "story.md").read_text())
+
     def test_finish_story_resolves_unprefixed_path(self):
         self._run(["init", str(self.kb)])
         story = self._seed_story()
@@ -238,6 +263,15 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("shop/2026-07-02-b", out)
         self.assertNotIn("stories/shop", out)
+
+    def test_learn_story_accepts_kb_dirname_prefixed_path(self):
+        # issue #53: the ledger must hold <repo>/<date>-<slug> whatever form was pasted.
+        self._run(["init", str(self.kb)])
+        rc, out = self._run(["learn", "add", "y", "Rule",
+                             "--story", "knowledge/stories/webapp/2026-07-01-a/story.md"])
+        self.assertEqual(rc, 0)
+        self.assertIn("stories: webapp/2026-07-01-a", out)
+        self.assertNotIn("knowledge/stories", out)
 
     def test_learn_add_accepts_flag_aliases(self):
         import subprocess

@@ -54,6 +54,7 @@ def _resolve_story_dir(kb, story_path):
     if p.is_absolute() or not kb:
         candidates = [p]
     else:
+        p = _strip_kb_dirname(kb, p)
         # Accept both <repo>/<date>-<slug> and the stories/-prefixed form
         # recall prints, so either can be copy-pasted (issue #21).
         candidates = [Path(kb) / p, p]
@@ -70,12 +71,24 @@ def _resolve_story_dir(kb, story_path):
     sys.exit(2)
 
 
-def _normalize_learn_story(s):
+def _strip_kb_dirname(kb, p):
+    """Drop a leading <basename(kb)>/stories/ pair, the form session notes carry
+    when the KB checkout sits beside the repos (issue #53). Only the pair is
+    stripped: a bare <repo>/<date>-<slug> whose repo shares the KB's name stays."""
+    parts = Path(p).parts
+    if kb and len(parts) > 2 and parts[0] == Path(kb).name and parts[1] == "stories":
+        return Path(*parts[1:])
+    return Path(p)
+
+
+def _normalize_learn_story(s, kb=None):
     """Ledger stories are <repo>/<date>-<slug>; also accept the
-    stories/-prefixed (and /story.md-suffixed) form recall prints (issue #21)."""
+    stories/-prefixed (and /story.md-suffixed) form recall prints (issue #21)
+    and the <kb-dirname>/stories/-prefixed form session notes carry (issue #53)."""
     s = s.strip().strip("/")
     if s.endswith("/story.md"):
         s = s[: -len("/story.md")]
+    s = _strip_kb_dirname(kb, s).as_posix()
     if s.startswith("stories/"):
         s = s[len("stories/"):]
     return s
@@ -289,13 +302,13 @@ def main(argv=None):
                     )
                     sys.exit(2)
                 entry = learn_mod.add(kb, learn_id, rule,
-                                      _normalize_learn_story(args.story), today)
+                                      _normalize_learn_story(args.story, kb), today)
                 print(learn_mod.build_learning_line(entry))
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(learn_id)) + "\n")
             elif args.learn_cmd == "reinforce":
                 threshold = int(config.get("learn_threshold") or 3)
                 entry, proposal = learn_mod.reinforce(
-                    kb, args.id, _normalize_learn_story(args.story), today, threshold)
+                    kb, args.id, _normalize_learn_story(args.story, kb), today, threshold)
                 print(learn_mod.build_learning_line(entry))
                 if proposal:
                     print(proposal)
