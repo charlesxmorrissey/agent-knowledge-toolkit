@@ -180,6 +180,11 @@ to today; it's pinned above only so the paths in the example line up.)
 | `show <id>`                                      | Print one entry's full ledger line               |
 | `prune`                                          | Print-only staleness report                      |
 
+`--story` accepts the bare `<repo>/<date>-<slug>`, the `stories/`-prefixed form that
+`recall` prints, and the `<kb-dirname>/stories/` form session notes carry. It must
+resolve to an existing story directory; a malformed or missing path exits 2 before the
+ledger is touched.
+
 ### Slash commands (Claude Code)
 
 `.claude/commands/` provides thin wrappers that add the model judgment around the CLI:

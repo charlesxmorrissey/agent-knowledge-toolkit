@@ -40,6 +40,11 @@ class CliTest(unittest.TestCase):
                      ["commit", "-q", "-m", "init"]):
             subprocess.run(["git", "-C", str(self.kb), *args], check=True)
 
+    def _story(self, *rels):
+        """Create empty story dirs so learn --story's existence check (issue #57) passes."""
+        for rel in rels:
+            (self.kb / "stories" / rel).mkdir(parents=True, exist_ok=True)
+
     def test_init_and_start_and_reindex(self):
         rc, _ = self._run(["init", str(self.kb)])
         self.assertEqual(rc, 0)
@@ -234,6 +239,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_add_reinforce_propose_graduate(self):
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a", "shop/2026-07-02-b", "webapp/2026-07-03-c")
         rc, out = self._run(["learn", "add", "cm6-paste", "Verify bundle bytes after paste",
                              "--story", "webapp/2026-07-01-a"])
         self.assertEqual(rc, 0)
@@ -254,6 +260,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_story_accepts_recall_style_path(self):
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a", "shop/2026-07-02-b")
         rc, out = self._run(["learn", "add", "x", "Rule",
                              "--story", "stories/webapp/2026-07-01-a/story.md"])
         self.assertEqual(rc, 0)
@@ -267,16 +274,49 @@ class CliTest(unittest.TestCase):
     def test_learn_story_accepts_kb_dirname_prefixed_path(self):
         # issue #53: the ledger must hold <repo>/<date>-<slug> whatever form was pasted.
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
         rc, out = self._run(["learn", "add", "y", "Rule",
                              "--story", "knowledge/stories/webapp/2026-07-01-a/story.md"])
         self.assertEqual(rc, 0)
         self.assertIn("stories: webapp/2026-07-01-a", out)
         self.assertNotIn("knowledge/stories", out)
 
+    def test_learn_reinforce_rejects_bare_repo_name(self):
+        # issue #57: a failed shell glob passed --story "heyflow/"; reinforce
+        # bumped hits and wrote the bare repo name into the ledger.
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
+        self._run(["learn", "add", "r", "Rule", "--story", "webapp/2026-07-01-a"])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(["learn", "reinforce", "r", "--story", "webapp/"])
+        self.assertEqual(ctx.exception.code, 2)
+        line = (self.kb / "LEARNINGS.md").read_text()
+        self.assertIn("hits: 1", line)
+        self.assertIn("stories: webapp/2026-07-01-a\n", line)
+
+    def test_learn_add_rejects_malformed_story_and_does_not_write(self):
+        self._run(["init", str(self.kb)])
+        for bad in ("webapp", "webapp/auth-fix", "webapp/2026-7-1-a", "stories/webapp"):
+            with self.assertRaises(SystemExit) as ctx:
+                self._run(["learn", "add", "m", "Rule", "--story", bad])
+            self.assertEqual(ctx.exception.code, 2, bad)
+        ledger = self.kb / "LEARNINGS.md"
+        self.assertFalse(ledger.exists() and "[m]" in ledger.read_text())
+
+    def test_learn_story_must_exist_under_stories(self):
+        self._run(["init", str(self.kb)])
+        err = io.StringIO()
+        with self.assertRaises(SystemExit) as ctx, redirect_stderr(err):
+            self._run(["learn", "add", "m", "Rule", "--story", "webapp/2026-07-01-missing"])
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("webapp/2026-07-01-missing", err.getvalue())
+        self.assertIn("stories/", err.getvalue())
+
     def test_learn_add_accepts_flag_aliases(self):
         import subprocess
         self._run(["init", str(self.kb)])
         subprocess.run(["git", "-C", str(self.kb), "init", "-q"], check=True)
+        self._story("webapp/2026-07-01-a")
         rc, out = self._run(["learn", "add", "--id", "flagged", "--rule", "Rule via flags",
                              "--story", "webapp/2026-07-01-a"])
         self.assertEqual(rc, 0)
@@ -289,12 +329,14 @@ class CliTest(unittest.TestCase):
 
     def test_learn_add_missing_rule_exits_2(self):
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
         with self.assertRaises(SystemExit) as ctx:
             self._run(["learn", "add", "only-id", "--story", "webapp/2026-07-01-a"])
         self.assertEqual(ctx.exception.code, 2)
 
     def test_learn_list_filters_by_status(self):
         self._run(["init", str(self.kb)])
+        self._story("x/2026-07-01-a", "y/2026-07-01-b")
         self._run(["learn", "add", "a", "Rule A", "--story", "x/2026-07-01-a"])
         self._run(["learn", "add", "b", "Rule B", "--story", "y/2026-07-01-b"])
         self._run(["learn", "wont", "b"])
@@ -305,6 +347,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_list_filters_by_repo(self):
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a", "shop/2026-07-01-b", "webapp/2026-07-02-c")
         self._run(["learn", "add", "a", "Rule A", "--story", "webapp/2026-07-01-a"])
         self._run(["learn", "add", "b", "Rule B", "--story", "shop/2026-07-01-b"])
         self._run(["learn", "reinforce", "b", "--story", "webapp/2026-07-02-c"])
@@ -319,6 +362,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_list_compact_truncates_and_drops_stories(self):
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
         self._run(["learn", "add", "long", "R" * 100, "--story", "webapp/2026-07-01-a"])
         rc, out = self._run(["learn", "list", "--compact"])
         self.assertEqual(rc, 0)
@@ -328,6 +372,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_show_prints_full_line(self):
         self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
         self._run(["learn", "add", "long", "R" * 100, "--story", "webapp/2026-07-01-a"])
         rc, out = self._run(["learn", "show", "long"])
         self.assertEqual(rc, 0)
@@ -342,6 +387,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_add_invalid_date_exits_2_and_no_write(self):
         self._run(["init", str(self.kb)])
+        self._story("a/2026-07-01-b")
         with self.assertRaises(SystemExit) as ctx:
             self._run(["learn", "add", "x", "Rule", "--story", "a/2026-07-01-b",
                        "--date", "07/30/2026"])
@@ -358,6 +404,7 @@ class CliTest(unittest.TestCase):
 
     def test_learn_prune_prints_sections(self):
         self._run(["init", str(self.kb)])
+        self._story("x/2026-01-01-a")
         self._run(["learn", "add", "old", "Old rule", "--story", "x/2026-01-01-a",
                    "--date", "2026-01-01"])
         rc, out = self._run(["learn", "prune"])
