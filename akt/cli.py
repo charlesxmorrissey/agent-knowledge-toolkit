@@ -1,5 +1,6 @@
 """Command-line dispatch for the AKT kernel."""
 import argparse
+import re
 import sys
 from datetime import date as _date
 from pathlib import Path
@@ -81,16 +82,36 @@ def _strip_kb_dirname(kb, p):
     return Path(p)
 
 
+_LEARN_STORY_RE = re.compile(r"[^/\s]+/\d{4}-\d{2}-\d{2}-[^/\s]+")
+
+
 def _normalize_learn_story(s, kb=None):
     """Ledger stories are <repo>/<date>-<slug>; also accept the
     stories/-prefixed (and /story.md-suffixed) form recall prints (issue #21)
-    and the <kb-dirname>/stories/-prefixed form session notes carry (issue #53)."""
+    and the <kb-dirname>/stories/-prefixed form session notes carry (issue #53).
+
+    The result must have that exact shape and name a directory under
+    <kb>/stories/ — a failed shell glob once passed a bare "<repo>/" and
+    reinforce wrote it into the ledger as a story (issue #57). Exits 2 before
+    anything is written.
+    """
+    raw = s
     s = s.strip().strip("/")
     if s.endswith("/story.md"):
         s = s[: -len("/story.md")]
     s = _strip_kb_dirname(kb, s).as_posix()
     if s.startswith("stories/"):
         s = s[len("stories/"):]
+    if not _LEARN_STORY_RE.fullmatch(s):
+        sys.stderr.write(
+            "invalid --story {!r}: expected <repo>/<date>-<slug> "
+            "(e.g. webapp/2026-07-01-auth-refresh)\n".format(raw)
+        )
+        sys.exit(2)
+    story_dir = Path(kb) / "stories" / s if kb else None
+    if story_dir is not None and not story_dir.is_dir():
+        sys.stderr.write("story not found: {} (no such directory: {})\n".format(s, story_dir))
+        sys.exit(2)
     return s
 
 
