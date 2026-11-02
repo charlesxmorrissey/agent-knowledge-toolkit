@@ -396,6 +396,39 @@ class CliTest(unittest.TestCase):
         if ledger.exists():
             self.assertNotIn("x", ledger.read_text())
 
+    def test_start_story_invalid_date_exits_2_and_writes_nothing(self):
+        # issue #60: a slash date nested the story three levels deep, out of
+        # reach of reindex/latest/digest. Same guard learn add and digest use.
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run_stderr(["start-story", "webapp", "Auth", "--date", "10/31/2026"])
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertFalse((self.kb / "stories" / "webapp").exists())
+
+    def test_start_story_invalid_date_message_names_the_flag(self):
+        self._run(["init", str(self.kb)])
+        buf = io.StringIO()
+        with redirect_stderr(buf), self.assertRaises(SystemExit):
+            main(["start-story", "webapp", "Auth", "--date", "2026-7-1"])
+        self.assertIn("--date must be YYYY-MM-DD", buf.getvalue())
+
+    def test_update_story_invalid_date_exits_2_and_leaves_story_unchanged(self):
+        # issue #60: '## Update — 10/31/2026' never matched the digest regex.
+        self._run(["init", str(self.kb)])
+        _, sp = self._run(["start-story", "webapp", "Auth", "--date", "2026-06-05"])
+        before = (self.kb / sp / "story.md").read_text()
+        import sys
+        buf = io.StringIO()
+        sys.stdin = io.StringIO("some update")
+        try:
+            with redirect_stderr(buf), self.assertRaises(SystemExit) as ctx:
+                main(["update-story", sp, "--stdin", "--date", "10/31/2026"])
+        finally:
+            sys.stdin = sys.__stdin__
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("--date must be YYYY-MM-DD", buf.getvalue())
+        self.assertEqual((self.kb / sp / "story.md").read_text(), before)
+
     def test_learn_unknown_id_exits_2(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as ctx:

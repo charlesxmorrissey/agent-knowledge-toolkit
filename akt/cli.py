@@ -205,6 +205,19 @@ def build_parser():
     return p
 
 
+def _require_iso_date(value):
+    """Exit 2 unless `value` is YYYY-MM-DD. Story dirs and `## Update` headings
+    embed the date verbatim, so a slash date nests the story out of reach of
+    reindex/latest/digest and an update heading the digest regex never matches
+    (issue #60). Same guard `learn` and `digest` already apply."""
+    try:
+        _date.fromisoformat(value)
+    except ValueError:
+        sys.stderr.write("error: --date must be YYYY-MM-DD\n")
+        sys.exit(2)
+    return value
+
+
 def main(argv=None):
     argv = argv if argv is not None else sys.argv[1:]
     args = build_parser().parse_args(argv)
@@ -219,7 +232,7 @@ def main(argv=None):
     if args.cmd == "start-story":
         kb = _require_kb()
         _warn_if_dirty(kb)
-        d = args.date or _date.today().isoformat()
+        d = _require_iso_date(args.date or _date.today().isoformat())
         # KB-relative, matching what recall/latest print and what finish-story/
         # update-story resolve — an absolute path here got re-resolved against
         # knowledge_base_path and doubled (issue #39).
@@ -264,7 +277,7 @@ def main(argv=None):
         kb = _require_kb()
         sp = _resolve_story_dir(kb, args.story_path)
         body = sys.stdin.read() if args.stdin else ""
-        d = args.date or _date.today().isoformat()
+        d = _require_iso_date(args.date or _date.today().isoformat())
         try:
             print(story_mod.update_story(sp, body, d))
         except ValueError as err:
