@@ -13,6 +13,7 @@ from akt import init as init_mod
 from akt import install as install_mod
 from akt import gitkb
 from akt import learn as learn_mod
+from akt import drift as drift_mod
 from akt.paths import rel_to_kb
 
 
@@ -40,6 +41,30 @@ def _print_entry(entry):
     print(entry["path"])
     if entry.get("summary"):
         print("    " + entry["summary"])
+
+
+def _print_drift_row(row, root):
+    """repo: flags / story line / head line. Missing parts are said, not skipped."""
+    from datetime import datetime as _dt
+    story, head = row["story"], row["head"]
+    missing = []
+    if not story:
+        missing.append("no story")
+    if not head:
+        missing.append("no repo at ../{}".format(row["repo"]))
+    label = ", ".join(row["flags"]) if row["flags"] else ("current" if not missing else "")
+    parts = [p for p in (label, ", ".join(missing)) if p]
+    print("{}: {}".format(row["repo"], ", ".join(parts)))
+    if story:
+        upd = story["update"]
+        if upd and len(upd[1]) > 140:
+            upd = (upd[0], upd[1][:139] + "…")  # a paragraph-long first line swamps the report
+        tail = "update {}: {}".format(*upd) if upd else "no updates"
+        print("    {}  ({}, {})".format(story["path"],
+              _dt.fromtimestamp(story["changed"]).strftime("%Y-%m-%d %H:%M"), tail))
+    if head:
+        print("    head {} {} {}".format(
+            _dt.fromtimestamp(head["time"]).strftime("%Y-%m-%d %H:%M"), head["sha"], head["subject"]))
 
 
 def _resolve_story_dir(kb, story_path):
@@ -164,6 +189,13 @@ def build_parser():
 
     pd = sub.add_parser("digest", help="print stories (all repos) created or updated since a date")
     pd.add_argument("--since", default=None, help="YYYY-MM-DD, inclusive (default: today)")
+
+    pdr = sub.add_parser("drift", help="which sibling repos moved past a story's last change (issue #61)")
+    pdr.add_argument("story_path", help="the main story; siblings are compared against its last KB commit")
+    pdr.add_argument("--repos", required=True, help="comma-separated sibling repo names, resolved as ../<repo>")
+    pdr.add_argument("--pointer", action="store_true",
+                     help="append a templated pointer update to each stale sibling story and commit the KB")
+    pdr.add_argument("--date", default=None, help="YYYY-MM-DD for the pointer heading (default: today)")
 
     sub.add_parser("reindex", help="rebuild INDEX.md from all story.md files")
 
@@ -314,6 +346,24 @@ def main(argv=None):
             _print_entry(entry)
             for d, first in entry["updates"]:
                 print("    update {}: {}".format(d, first))
+        return 0
+
+    if args.cmd == "drift":
+        kb = _require_kb()
+        sp = _resolve_story_dir(kb, args.story_path)
+        main_rel = rel_to_kb(kb, sp)
+        d = _require_iso_date(args.date or _date.today().isoformat())
+        repos = [r.strip() for r in args.repos.split(",") if r.strip()]
+        root = Path.cwd().parent  # siblings sit beside the current repo
+        rows = drift_mod.drift(kb, main_rel, repos, root)
+        for row in rows:
+            _print_drift_row(row, root)
+        if args.pointer:
+            written = drift_mod.pointer(kb, main_rel, rows, d)
+            for rel in written:
+                print("pointer appended: {}".format(rel))
+            if written:
+                sys.stderr.write(gitkb.commit_kb(kb, "drift pointers: {}".format(sp.name)) + "\n")
         return 0
 
     if args.cmd == "reindex":
