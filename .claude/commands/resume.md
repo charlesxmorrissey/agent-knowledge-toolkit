@@ -17,6 +17,10 @@ Start-of-session routine. Do these in order:
    story (resolve against `knowledge_base_path` in `~/.claude/akt-config.md`).
    Its final section (the last `## Update`, or the newest `sessions/NN.md`
    handoff) is the authoritative "where we left off".
+   If this repo's CLAUDE.md names sibling repos that share the work, run
+   `akt drift <story_path> --repos a,b`: a sibling flagged `newer` has a story
+   or git head that moved after this story's last change, so read it before
+   building on this one.
 4. **Repo extras**: if this repo's CLAUDE.md or AGENTS.md has a
    `## Resume extras` section, execute those steps now (external trackers,
    time logs — anything project-specific).

@@ -149,7 +149,9 @@ akt recall "how do I refresh an auth token"
 Two more you'll want eventually: `akt update-story "$STORY" --stdin` appends a
 dated update when the same thread continues, and `akt latest webapp` resumes
 the most recent story for a repo without inventing a query. (`--date` defaults
-to today; it's pinned above only so the paths in the example line up.)
+to today; it's pinned above only so the paths in the example line up. A value
+that is not `YYYY-MM-DD` exits 2 before anything is written, on every command
+that takes it.)
 
 When one story carries work that lands in several repos, `akt drift <story> --repos
 components,assets` says which sibling moved past the story's last change.
