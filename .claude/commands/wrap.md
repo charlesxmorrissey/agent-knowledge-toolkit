@@ -19,6 +19,10 @@ End-of-session routine. Do these in order:
    - Mid-story with nothing distillable yet → leave a handoff instead:
      `akt end-session <story_path>` with State / Done / Next / Watch out
      on stdin (commits + pushes in the same call, like `update-story`).
+   - Work landed in sibling repos but the record is in this story →
+     `akt drift <story_path> --repos a,b --pointer` appends a pointer update
+     to each sibling story flagged `stale`, so a session started there finds
+     this story (skips siblings whose newest update already names it).
 2. **Learnings pass**: run `akt learn list --status candidate --compact` and
    compare the session's transferable lessons (full text of a likely match via
    `akt learn show <id>`) — matches get
