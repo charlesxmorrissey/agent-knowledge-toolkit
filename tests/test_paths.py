@@ -11,6 +11,17 @@ class PathsTest(unittest.TestCase):
         self.assertEqual(slugify("Fix  the   401!! bug"), "fix-the-401-bug")
         self.assertEqual(slugify("--Trim--"), "trim")
 
+    def test_slugify_empty_result_falls_back_to_title_hash(self):
+        # issue #59: an all-non-ASCII title slugged to "", so start-story made
+        # `<date>-/` with `slug: ` and finish-story could never index it.
+        for title in ("日本語", "Кириллица", "🚀", "!!!"):
+            s = slugify(title)
+            self.assertRegex(s, r"^title-[0-9a-f]{8}$", title)
+        self.assertEqual(slugify("日本語"), slugify("日本語"))
+        self.assertNotEqual(slugify("日本語"), slugify("Кириллица"))
+        # mixed titles keep the ASCII part, no hash
+        self.assertEqual(slugify("Fix 日本語 bug"), "fix-bug")
+
     def test_story_dir(self):
         d = story_dir("/kb", "webapp", "2026-06-05", "auth-token-refresh")
         self.assertEqual(str(d), "/kb/stories/webapp/2026-06-05-auth-token-refresh")

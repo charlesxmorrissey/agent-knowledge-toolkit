@@ -428,6 +428,23 @@ class CliTest(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 2)
         self.assertIn("--date must be YYYY-MM-DD", buf.getvalue())
         self.assertEqual((self.kb / sp / "story.md").read_text(), before)
+    def test_start_story_non_ascii_title_roundtrips_through_finish_story(self):
+        # issue #59: slugify("日本語") was "", so the story dir was `<date>-`
+        # and finish-story failed on the missing slug forever.
+        import sys
+        self._run(["init", str(self.kb)])
+        rc, sp = self._run(["start-story", "webapp", "日本語", "--date", "2026-06-05"])
+        self.assertEqual(rc, 0)
+        self.assertRegex(sp, r"^stories/webapp/2026-06-05-title-[0-9a-f]{8}$")
+        self.assertIn("日本語", (self.kb / sp / "story.md").read_text())  # title kept verbatim
+        body = "## Problem\nx\n\n## Decisions\ny\n\n## Outcome\nz\n"
+        sys.stdin = io.StringIO(body)
+        try:
+            rc, line = self._run(["finish-story", sp, "--stdin", "--summary", "s"])
+        finally:
+            sys.stdin = sys.__stdin__
+        self.assertEqual(rc, 0)
+        self.assertRegex(line, r"^- \[webapp/title-[0-9a-f]{8}\] s \| keys:  \| stories/webapp/2026-06-05-title-")
 
     def test_learn_unknown_id_exits_2(self):
         self._run(["init", str(self.kb)])
