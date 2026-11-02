@@ -151,6 +151,13 @@ dated update when the same thread continues, and `akt latest webapp` resumes
 the most recent story for a repo without inventing a query. (`--date` defaults
 to today; it's pinned above only so the paths in the example line up.)
 
+When one story carries work that lands in several repos, `akt drift <story> --repos
+components,assets` says which sibling moved past the story's last change.
+At resume, a `newer` sibling means read its story or git log before building on the
+main one. At wrap, `--pointer` appends a short templated update to each `stale`
+sibling story naming the main story, so a session started in that repo finds the
+record instead of a story that stopped a week earlier.
+
 ## Commands
 
 ### CLI (`akt <command>` — or `python3 -m akt` from the repo without the launcher)
@@ -165,6 +172,7 @@ to today; it's pinned above only so the paths in the example line up.)
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
 | `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
+| `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved as `../<repo>`): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB |
 | `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
 | `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files                                                                                                                     |
 
