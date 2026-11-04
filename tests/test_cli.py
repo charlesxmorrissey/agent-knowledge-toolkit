@@ -71,7 +71,9 @@ class CliTest(unittest.TestCase):
                      ["recall", "auth"], ["latest", "webapp"],
                      ["start-story", "webapp", "Second", "--date", "2026-06-06"]):
             self.assertNotIn("uncommitted", self._run_stderr(argv), argv)
-        # A session handoff under the open story is still mid-story state.
+        # A session handoff under the open story is still mid-story state
+        # (end_session creates sessions/ on first use).
+        (self.kb / rel / "sessions").mkdir()
         (self.kb / rel / "sessions" / "01.md").write_text("# Session 1\n")
         self.assertNotIn("uncommitted", self._run_stderr(["recall", "auth"]))
 

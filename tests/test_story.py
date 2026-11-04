@@ -37,9 +37,9 @@ class StoryTest(unittest.TestCase):
     def test_start_story_scaffolds(self):
         d = start_story(self.kb, "webapp", "Auth Token Refresh", "2026-06-05")
         self.assertTrue((d / "story.md").exists())
-        # sessions/ exists but holds NO placeholder — handoffs are created by end_session
-        self.assertTrue((d / "sessions").is_dir())
-        self.assertFalse((d / "sessions" / "01.md").exists())
+        # No sessions/ yet: end_session creates it on the first handoff. An empty
+        # dir is invisible to git but shows up in every vault/file browser.
+        self.assertFalse((d / "sessions").exists())
         meta, _ = parse_frontmatter((d / "story.md").read_text())
         self.assertEqual(meta["repo"], "webapp")
         self.assertEqual(meta["slug"], "auth-token-refresh")
