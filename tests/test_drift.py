@@ -139,6 +139,9 @@ class DriftModuleTest(unittest.TestCase):
         self.assertIn("## Update — 2026-11-01", text)
         self.assertIn(self.main, text)
         self.assertIn("since 2026-10-28", text)
+        # issue #66: the reference is a relative markdown link that resolves
+        # from the sibling story's directory, with the KB path as its text.
+        self.assertIn("[{}](../../webapp/2026-10-26-checkout-plan/story.md)".format(self.main), text)
         self.assertNotIn("pointer", (self.kb / "stories/fresh/2026-10-31-newer-story/story.md").read_text())
 
 

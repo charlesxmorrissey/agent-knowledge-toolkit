@@ -102,11 +102,23 @@ def drift(kb_path, main_story_rel, repos, root):
     return rows
 
 
+# The main story is a relative markdown link from the sibling story's
+# directory (stories/<repo>/<slug>/ -> ../../<main_repo>/<main_slug>/story.md)
+# so it resolves in Obsidian, on GitHub, and in any editor; the KB path stays
+# as the link text so the dedupe check in pointer() still matches (issue #66).
 _POINTER = (
     "{date} pointer. Work on this repo since {since} is recorded in the main "
-    "story, {main}; read its updates from that date on. Appended by "
+    "story, [{main}]({href}); read its updates from that date on. Appended by "
     "`akt drift --pointer`."
 )
+
+
+def _link_href(main):
+    """Relative path from any stories/<repo>/<slug>/ dir to main's story.md."""
+    parts = main.split("/")
+    if parts and parts[0] == "stories":
+        parts = parts[1:]
+    return "../../" + "/".join(parts) + "/story.md"
 
 
 def pointer(kb_path, main_story_rel, rows, date):
@@ -125,6 +137,7 @@ def pointer(kb_path, main_story_rel, rows, date):
             continue  # its newest update already points here; do not stack pointers
         story_dir = (Path(kb_path) / rel).parent
         since = story_dir.name[:10]
-        update_story(story_dir, _POINTER.format(date=date, since=since, main=main), date)
+        update_story(story_dir, _POINTER.format(date=date, since=since, main=main,
+                                                 href=_link_href(main)), date)
         written.append(rel)
     return written

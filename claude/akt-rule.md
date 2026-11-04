@@ -26,7 +26,7 @@ Skip capture for trivial/throwaway edits.
 ### Continue a story vs start a new one
 
 - **Continue** (append via `akt update-story <story_path> --stdin`) when the work advances the same problem: follow-ups, iterations, new versions of the same deliverable, the next back-and-forth in an ongoing engagement thread. It appends a dated `## Update` section and commits/pushes in one call.
-- **Start new** (`akt start-story`) when the problem statement changes — a decision that stands on its own and would be recalled independently, even if it arose in the same thread or repo. Link the stories under `## Links`.
+- **Start new** (`akt start-story`) when the problem statement changes — a decision that stands on its own and would be recalled independently, even if it arose in the same thread or repo. Link the stories under `## Links` as relative markdown links: `[<repo>/<date>-<slug>](../../<repo>/<date>-<slug>/story.md)`.
 - Unsure? Ask "would someone search for this on its own?" — yes → new story; no → update.
 
 ## Graceful no-op

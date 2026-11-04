@@ -238,6 +238,36 @@ class StoryTest(unittest.TestCase):
         meta, _ = parse_frontmatter((d / "story.md").read_text())
         self.assertEqual(meta["keys"], "auth, token")
 
+    def test_start_story_writes_tags_from_keys(self):
+        # issue #66: Obsidian reads tags from `tags`, never from `keys`.
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05", keys="auth, google docs, 123")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["tags"], "auth, google-docs")
+
+    def test_finish_story_keys_arg_writes_tags(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "---\nsummary: s\n---\n## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        finish_story(self.kb, d, body, keys="auth, form.js")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["tags"], "auth, formjs")
+
+    def test_finish_story_body_keys_write_tags(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "---\nsummary: s\nkeys: from-body\n---\n## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        finish_story(self.kb, d, body)
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["tags"], "from-body")
+
+    def test_finish_story_keys_arg_without_body_writes_tags(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        (d / "story.md").write_text(
+            "---\nrepo: webapp\nslug: auth\ndate: 2026-06-05\nsummary: s\n---\n"
+            "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        )
+        finish_story(self.kb, d, None, keys="auth")
+        meta, _ = parse_frontmatter((d / "story.md").read_text())
+        self.assertEqual(meta["tags"], "auth")
+
     def test_finish_story_unindexed_write_omits_blank_frontmatter(self):
         # issue #43: the written-but-unindexed story.md must not carry blank
         # `summary: ` / `keys: ` lines inherited from the skeleton — they

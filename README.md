@@ -157,7 +157,7 @@ When one story carries work that lands in several repos, `akt drift <story> --re
 components,assets` says which sibling moved past the story's last change.
 At resume, a `newer` sibling means read its story or git log before building on the
 main one. At wrap, `--pointer` appends a short templated update to each `stale`
-sibling story naming the main story, so a session started in that repo finds the
+sibling story linking the main story, so a session started in that repo finds the
 record instead of a story that stopped a week earlier.
 
 ## Commands
@@ -167,7 +167,7 @@ record instead of a story that stopped a week earlier.
 | Command                                                 | What it does                                                                                                                                                     |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `install`                                               | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files)                           |
-| `init <path>`                                           | Create a knowledge base at `<path>` and record it in config                                                                                                      |
+| `init <path>`                                           | Create a knowledge base at `<path>`, add `.obsidian/` to its `.gitignore`, and record it in config                                                              |
 | `start-story <repo> "<title>" [--date YYYY-MM-DD] [--keys a,b,c]` | Scaffold a story dir with `story.md` (keys seeded if given) and an empty `sessions/`; prints the KB-relative path. A title with no ASCII letters or digits slugs to `title-<8-hex hash>` |
 | `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin; the first is `01.md`) and commit the knowledge base (pushing if a remote exists) — same atomic step as `finish-story` |
 | `finish-story <story_path> [--stdin] [--summary "..."] [--keys a,b,c]` | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step; `--summary` / `--keys` set/override the frontmatter (so a stdin body needs none, and a written-but-unindexed story is repaired by re-running with `--summary` alone); a story with no keys is indexed with a warning |
@@ -176,7 +176,7 @@ record instead of a story that stopped a week earlier.
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
 | `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved as `../<repo>`): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB |
 | `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
-| `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files                                                                                                                     |
+| `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files, and write each story's `tags` line from its `keys` where the two differ (a story with current tags is not touched) |
 
 #### `akt learn` — evidence ledger
 
@@ -230,6 +230,29 @@ knowledge/
 `story.md` is intentionally tight; the high-value payload is the
 **decision → because → rejected-alternative** line, the thing an agent can't
 recover by reading code.
+
+### Opening the knowledge base in Obsidian
+
+The knowledge base works as an Obsidian vault with no extra setup. Three
+details make it a good one, and none of them ties AKT to Obsidian:
+
+- Every `story.md` carries a `tags` line next to `keys`. Obsidian reads tags
+  from `tags` and ignores `keys`. AKT writes `tags` from `keys` on every
+  command that writes frontmatter, and `akt reindex` repairs any story where
+  the two differ. A key is shaped into a tag by joining its words with a
+  hyphen and dropping characters Obsidian does not allow (so `google docs`
+  becomes `google-docs` and `form.js` becomes `formjs`); a purely numeric key
+  gets no tag. `keys` stays the source of truth, and nothing in AKT reads
+  `tags`. The first `akt reindex` after upgrading writes the line into every
+  existing story without changing any story's modification time.
+- Links between stories are relative markdown links, for example
+  `[webapp/2026-06-05-auth](../../webapp/2026-06-05-auth/story.md)`. They
+  resolve in Obsidian, on GitHub, and in any editor, so the graph view and
+  backlinks fill in. `akt drift --pointer` writes its pointer that way; use
+  the same form under `## Links`.
+- `akt init` adds `.obsidian/` to the knowledge base `.gitignore`, so a
+  vault's workspace file never rides along on a story commit. Re-run
+  `akt init <path>` on an existing knowledge base to add the line.
 
 ## Testing
 
