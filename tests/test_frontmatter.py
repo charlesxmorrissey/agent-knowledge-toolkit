@@ -33,9 +33,15 @@ class FrontmatterTest(unittest.TestCase):
         # a purely numeric tag is not a tag at all.
         self.assertEqual(
             tags_from_keys("web-assets cdn, form.js, 1217471298675137, auth, asana-123, [omnito, ,"),
-            "web-assets-cdn, formjs, auth, asana-123, omnito",
+            "[web-assets-cdn, formjs, auth, asana-123, omnito]",
         )
         self.assertEqual(tags_from_keys(""), "")
+
+    def test_tags_value_is_a_yaml_flow_list(self):
+        # Obsidian reads a bare `tags: a, b` string as ONE tag named "a, b"
+        # and flags it invalid; only a YAML list gives one tag per key.
+        self.assertEqual(tags_from_keys("auth"), "[auth]")
+        self.assertTrue(tags_from_keys("auth, token").startswith("["))
 
     def test_set_frontmatter_line_replaces_or_inserts_after_keys(self):
         text = "---\nrepo: a\nkeys: x, y\n---\n\n## Problem\n"
