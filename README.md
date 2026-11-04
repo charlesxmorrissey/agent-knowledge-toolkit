@@ -176,7 +176,7 @@ record instead of a story that stopped a week earlier.
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
 | `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved as `../<repo>`): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB |
 | `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
-| `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files, and write each story's `tags` line from its `keys` where the two differ (a story with current tags is not touched) |
+| `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files, and repair each story's frontmatter for YAML readers: the `tags` line from its `keys`, and quotes around a `summary` that needs them (a story that is already right is not touched) |
 
 #### `akt learn` — evidence ledger
 
@@ -254,6 +254,16 @@ details make it a good one, and none of them ties AKT to Obsidian:
 - `akt init` adds `.obsidian/` to the knowledge base `.gitignore`, so a
   vault's workspace file never rides along on a story commit. Re-run
   `akt init <path>` on an existing knowledge base to add the line.
+- The `summary` line is valid YAML. AKT reads frontmatter with its own
+  line parser, so a bare `: ` or ` #` inside a summary never bothered it.
+  Obsidian and GitHub run a YAML parser. A `: ` makes the whole block fail
+  and show as raw text, and a ` #` silently cuts the summary at that point.
+  AKT wraps a summary in double quotes only when YAML needs it: a `: `, a
+  ` #`, a trailing colon, or a leading quote, bracket, or dash. Quotes and
+  backslashes inside are escaped. Recall, `latest`, and `INDEX.md` show the
+  summary without the quotes. The first `akt reindex` after upgrading quotes
+  every existing summary that needs it, without changing any story's
+  modification time.
 
 ## Testing
 
