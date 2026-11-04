@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -77,6 +78,52 @@ class IndexTest(unittest.TestCase):
             ],
         )
 
+
+    def _write_story(self, repo, slug, keys, tags=None):
+        d = self.kb / "stories" / repo / ("2026-06-05-" + slug)
+        d.mkdir(parents=True, exist_ok=True)
+        fm = "---\nrepo: {}\nslug: {}\nsummary: did {}\nkeys: {}\n".format(repo, slug, slug, keys)
+        if tags is not None:
+            fm += "tags: {}\n".format(tags)
+        (d / "story.md").write_text(fm + "---\n## Problem\n")
+        return d / "story.md"
+
+    def test_reindex_writes_tags_from_keys_into_untagged_stories(self):
+        # issue #66: the backfill, and the repair after a hand-edited keys line.
+        missing = self._write_story("webapp", "auth", "auth, google docs")
+        stale = self._write_story("api", "retry", "retry, backoff", tags="retry")
+        reindex(self.kb)
+        self.assertIn("tags: auth, google-docs\n", missing.read_text())
+        self.assertIn("tags: retry, backoff\n", stale.read_text())
+
+    def test_reindex_leaves_a_story_with_current_tags_untouched(self):
+        current = self._write_story("webapp", "auth", "auth, token", tags="auth, token")
+        before = current.read_text()
+        mtime = current.stat().st_mtime_ns
+        reindex(self.kb)
+        self.assertEqual(current.read_text(), before)
+        self.assertEqual(current.stat().st_mtime_ns, mtime)
+
+    def test_reindex_tags_write_preserves_story_mtime(self):
+        # `akt latest` ranks by story.md mtime; a backfill that bumped every
+        # mtime would make the newest story whichever file glob wrote last.
+        story = self._write_story("webapp", "auth", "auth, token")
+        os.utime(story, ns=(1_700_000_000_000_000_000, 1_700_000_000_000_000_000))
+        reindex(self.kb)
+        self.assertIn("tags: auth, token\n", story.read_text())
+        self.assertEqual(story.stat().st_mtime_ns, 1_700_000_000_000_000_000)
+
+    def test_reindex_does_not_add_an_empty_tags_line(self):
+        skeleton = self._write_story("webapp", "auth", "")
+        reindex(self.kb)
+        self.assertNotIn("tags:", skeleton.read_text())
+
+    def test_reindex_reports_tagged_count(self):
+        self._write_story("webapp", "auth", "auth")
+        self._write_story("api", "retry", "retry", tags="retry")
+        lines, tagged = reindex(self.kb, with_tags=True)
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(tagged, ["stories/webapp/2026-06-05-auth/story.md"])
 
     def test_reindex_skips_unfinished_stories(self):
         # Finished story — non-empty summary

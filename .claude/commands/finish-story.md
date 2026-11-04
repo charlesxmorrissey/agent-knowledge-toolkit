@@ -18,6 +18,7 @@ allowed-tools: Bash, Read
    - <decision> — because <why> — rejected <alternative>
    ## Outcome
    ## Links
+   - [<repo>/<date>-<slug>](../../<repo>/<date>-<slug>/story.md) — <how it relates>
    ```
 3. Pipe it in — one call:
 

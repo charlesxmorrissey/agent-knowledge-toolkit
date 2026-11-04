@@ -32,6 +32,19 @@ class InitTest(unittest.TestCase):
         init_kb(self.kb, self.cfg)
         self.assertIn("keep me", (self.kb / "AGENTS.md").read_text())
 
+    def test_init_ignores_obsidian_workspace(self):
+        # issue #66: a vault's .obsidian/ must never ride along on a story commit.
+        init_kb(self.kb, self.cfg)
+        self.assertEqual((self.kb / ".gitignore").read_text(), ".obsidian/\n")
+        init_kb(self.kb, self.cfg)
+        self.assertEqual((self.kb / ".gitignore").read_text(), ".obsidian/\n")
+
+    def test_init_appends_obsidian_to_an_existing_gitignore(self):
+        self.kb.mkdir(parents=True)
+        (self.kb / ".gitignore").write_text(".DS_Store\n")
+        init_kb(self.kb, self.cfg)
+        self.assertEqual((self.kb / ".gitignore").read_text(), ".DS_Store\n.obsidian/\n")
+
 
 if __name__ == "__main__":
     unittest.main()

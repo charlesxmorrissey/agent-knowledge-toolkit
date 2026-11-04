@@ -15,7 +15,8 @@ End-of-session routine. Do these in order:
      own) → `akt start-story <repo> "<short title>"` then
      `akt finish-story <story_path> --stdin --summary "..." --keys a,b,c`
      (the body on stdin, the summary and keys on the flags — one call).
-     Link related stories under `## Links`.
+     Link related stories under `## Links` as relative markdown links,
+     `[<repo>/<date>-<slug>](../../<repo>/<date>-<slug>/story.md)`.
    - Mid-story with nothing distillable yet → leave a handoff instead:
      `akt end-session <story_path>` with State / Done / Next / Watch out
      on stdin (commits + pushes in the same call, like `update-story`).

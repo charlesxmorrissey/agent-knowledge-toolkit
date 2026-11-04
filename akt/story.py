@@ -1,7 +1,7 @@
 """Story lifecycle: start, per-session handoff, finish (distill + index)."""
 from pathlib import Path
 
-from akt.frontmatter import build_frontmatter, parse_frontmatter, split_keys
+from akt.frontmatter import build_frontmatter, parse_frontmatter, split_keys, tags_from_keys
 from akt.paths import slugify, story_dir, next_session_number, rel_to_kb
 from akt.index import build_index_line, append_index_line
 
@@ -17,6 +17,7 @@ _STORY_TEMPLATE = """
 <gotchas, what to watch>
 
 ## Links
+- [<repo>/<date>-<slug>](../../<repo>/<date>-<slug>/story.md) — <how it relates>
 """
 
 _SESSION_TEMPLATE = """# Session {n}
@@ -52,6 +53,17 @@ def _normalize_keys(keys):
     return ", ".join(split_keys(keys or ""))
 
 
+def _render(meta):
+    """Serialize frontmatter with `tags` derived from `keys` (issue #66).
+    `tags` is a cache for Obsidian; nothing in AKT reads it."""
+    tags = tags_from_keys(meta.get("keys", ""))
+    if tags:
+        meta["tags"] = tags
+    else:
+        meta.pop("tags", None)
+    return build_frontmatter(meta)
+
+
 def _apply_overrides(meta, keys, summary):
     """Flag values win over the frontmatter's (the flag is the explicit ask)."""
     if keys is not None:
@@ -68,7 +80,7 @@ def start_story(kb_path, repo, title, date, keys=None):
     (d / "sessions").mkdir(parents=True)
     meta = {"repo": repo, "slug": slug, "date": date, "summary": "",
             "keys": _normalize_keys(keys)}
-    (d / "story.md").write_text(build_frontmatter(meta) + _STORY_TEMPLATE.format(title=title))
+    (d / "story.md").write_text(_render(meta) + _STORY_TEMPLATE.format(title=title))
     # Session handoffs are written by end_session (starting at 01.md), not pre-seeded —
     # so a single-session story has an empty sessions/ rather than a blank placeholder.
     return d
@@ -138,13 +150,13 @@ def finish_story(kb_path, story_path, body=None, keys=None, summary=None):
         # `keys: ` line in a written-but-unindexed story collided with the
         # caller's obvious repair, an insert of the missing line (issue #43).
         meta = {k: v for k, v in old_meta.items() if v.strip()}
-        text = build_frontmatter(meta) + "\n" + new_body
+        text = _render(meta) + "\n" + new_body
     else:
         text = story_md.read_text()
         if keys is not None or summary is not None:
             meta, existing_body = parse_frontmatter(text)
             _apply_overrides(meta, keys, summary)
-            text = build_frontmatter(meta) + "\n" + existing_body
+            text = _render(meta) + "\n" + existing_body
     meta, _ = parse_frontmatter(text)
     try:
         _validate(text, meta)

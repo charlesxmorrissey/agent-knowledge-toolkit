@@ -367,8 +367,8 @@ def main(argv=None):
         return 0
 
     if args.cmd == "reindex":
-        lines = index_mod.reindex(_require_kb())
-        print("{} stories indexed".format(len(lines)))
+        lines, tagged = index_mod.reindex(_require_kb(), with_tags=True)
+        print("{} stories indexed, {} tags lines written".format(len(lines), len(tagged)))
         return 0
 
     if args.cmd == "learn":
