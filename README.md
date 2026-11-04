@@ -168,7 +168,7 @@ record instead of a story that stopped a week earlier.
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `install`                                               | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files)                           |
 | `init <path>`                                           | Create a knowledge base at `<path>`, add `.obsidian/` to its `.gitignore`, and record it in config                                                              |
-| `start-story <repo> "<title>" [--date YYYY-MM-DD] [--keys a,b,c]` | Scaffold a story dir with `story.md` (keys seeded if given) and an empty `sessions/`; prints the KB-relative path. A title with no ASCII letters or digits slugs to `title-<8-hex hash>` |
+| `start-story <repo> "<title>" [--date YYYY-MM-DD] [--keys a,b,c]` | Scaffold a story dir with `story.md` (keys seeded if given); prints the KB-relative path. `sessions/` appears on the first `end-session`. A title with no ASCII letters or digits slugs to `title-<8-hex hash>` |
 | `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin; the first is `01.md`) and commit the knowledge base (pushing if a remote exists) — same atomic step as `finish-story` |
 | `finish-story <story_path> [--stdin] [--summary "..."] [--keys a,b,c]` | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step; `--summary` / `--keys` set/override the frontmatter (so a stdin body needs none, and a written-but-unindexed story is repaired by re-running with `--summary` alone); a story with no keys is indexed with a warning |
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
@@ -221,7 +221,7 @@ knowledge/
   stories/
     <repo>/<date>-<slug>/
       story.md          # source of truth: problem, decisions + why, outcome
-      sessions/        # handoffs, created only by `akt end-session` (empty for single-session stories)
+      sessions/        # handoffs, created by `akt end-session` on first use (absent for single-session stories)
         01.md          #   01.md, 02.md, … appear when you end a session mid-story
   AGENTS.md             # global rules (graduated patterns — future work)
   INDEX.md              # derived search cache (regenerable; do not hand-edit)

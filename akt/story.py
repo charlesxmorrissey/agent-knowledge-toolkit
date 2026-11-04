@@ -77,12 +77,13 @@ def start_story(kb_path, repo, title, date, keys=None):
     d = story_dir(kb_path, repo, date, slug)
     if d.exists():
         raise FileExistsError(str(d))
-    (d / "sessions").mkdir(parents=True)
+    d.mkdir(parents=True)
     meta = {"repo": repo, "slug": slug, "date": date, "summary": "",
             "keys": _normalize_keys(keys)}
     (d / "story.md").write_text(_render(meta) + _STORY_TEMPLATE.format(title=title))
-    # Session handoffs are written by end_session (starting at 01.md), not pre-seeded —
-    # so a single-session story has an empty sessions/ rather than a blank placeholder.
+    # sessions/ is created by end_session on the first handoff (01.md), not here:
+    # an empty dir is invisible to git but clutters a vault or file browser, and
+    # most stories never need one.
     return d
 
 
