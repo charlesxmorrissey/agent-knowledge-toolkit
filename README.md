@@ -236,8 +236,9 @@ recover by reading code.
 The knowledge base works as an Obsidian vault with no extra setup. Three
 details make it a good one, and none of them ties AKT to Obsidian:
 
-- Every `story.md` carries a `tags` line next to `keys`. Obsidian reads tags
-  from `tags` and ignores `keys`. AKT writes `tags` from `keys` on every
+- Every `story.md` carries a `tags` line next to `keys`, written as a YAML
+  list (`tags: [auth, google-docs]`). Obsidian reads tags from `tags` and
+  ignores `keys`. AKT writes `tags` from `keys` on every
   command that writes frontmatter, and `akt reindex` repairs any story where
   the two differ. A key is shaped into a tag by joining its words with a
   hyphen and dropping characters Obsidian does not allow (so `google docs`

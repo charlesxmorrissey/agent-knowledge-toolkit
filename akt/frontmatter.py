@@ -38,14 +38,17 @@ def split_keys(keys_value):
 
 
 def tags_from_keys(keys_value):
-    """Shape a comma-separated keys string into an Obsidian-safe `tags` value.
-    `keys` stays the source of truth; this is a derived, lossy copy."""
+    """Shape a comma-separated keys string into an Obsidian-safe `tags` value,
+    a YAML flow list like `[auth, google-docs]`. Obsidian reads a bare
+    `a, b` string as one tag named "a, b" and flags it invalid; only a list
+    gives one tag per key. `keys` stays the source of truth; this is a
+    derived, lossy copy. Empty keys give "" (no line)."""
     tags = []
     for key in split_keys(keys_value or ""):
         tag = _TAG_DROP.sub("", "-".join(key.split()))
         if tag and not tag.isdigit() and tag not in tags:
             tags.append(tag)
-    return ", ".join(tags)
+    return "[{}]".format(", ".join(tags)) if tags else ""
 
 
 def set_frontmatter_line(text, key, value):
