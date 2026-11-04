@@ -17,19 +17,48 @@ def parse_frontmatter(text):
         line = lines[i]
         if ":" in line:
             key, _, value = line.partition(":")
-            meta[key.strip()] = value.strip()
+            meta[key.strip()] = _unquote(value.strip())
         i += 1
     body = "".join(lines[i + 1:]) if i < len(lines) else ""
     return meta, body
 
 
 def build_frontmatter(meta):
-    """Serialize a dict to a '---' delimited block (no trailing newline)."""
+    """Serialize a dict to a '---' delimited block (no trailing newline).
+    Values are quoted where a YAML reader needs it; `tags` is already a
+    YAML flow list and is written as is."""
     out = ["---"]
     for key, value in meta.items():
-        out.append("{}: {}".format(key, value))
+        out.append("{}: {}".format(key, value if key == "tags" else quote_value(value)))
     out.append("---")
     return "\n".join(out)
+
+
+# AKT's own parser splits a line on its first colon and never runs YAML, so
+# a plain summary always round-trips here. Obsidian and GitHub do run YAML:
+# a bare ": " errors the whole block, a bare " #" silently truncates the
+# value, and a leading indicator character (quote, bracket, dash, ...)
+# changes how the value is read. Quote only those, so every other story
+# stays byte-identical.
+_NEEDS_QUOTE = re.compile(r"""^[\s"'\[\]{}&*!|>%@`#,-]|^[?:-]\s|: | #|:$""")
+
+
+def quote_value(value):
+    """Return `value` as YAML would read it back unchanged: plain when it is
+    already safe, else double-quoted with backslash and quote escaped."""
+    value = "" if value is None else str(value)
+    if not value or not _NEEDS_QUOTE.search(value):
+        return value
+    return '"{}"'.format(value.replace("\\", "\\\\").replace('"', '\\"'))
+
+
+def _unquote(value):
+    """Undo quote_value. A value that merely starts with a quote (`"x" then
+    more`) is prose, not a quoted scalar, and comes back untouched."""
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"' and value[-2:] != '\\"':
+        inner = value[1:-1]
+        return re.sub(r'\\(["\\])', r"\1", inner)
+    return value
 
 
 def split_keys(keys_value):

@@ -73,6 +73,15 @@ class StoryTest(unittest.TestCase):
         self.assertEqual(len(lines), 1)
         self.assertEqual(parse_index_line(lines[0])["summary"], "Lazy refresh on 401")
 
+    def test_finish_story_writes_a_yaml_safe_summary_line(self):
+        d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
+        body = "## Problem\nx\n## Decisions\n- a\n## Outcome\nok\n"
+        finish_story(self.kb, d, body, keys="auth", summary='Fix: "quote" it, PR #67')
+        text = (d / "story.md").read_text()
+        self.assertIn('summary: "Fix: \\"quote\\" it, PR #67"\n', text)
+        self.assertEqual(parse_frontmatter(text)[0]["summary"], 'Fix: "quote" it, PR #67')
+        self.assertEqual(parse_index_line(read_index_lines(self.kb)[0])["summary"], 'Fix: "quote" it, PR #67')
+
     def test_update_story_appends_dated_section(self):
         d = start_story(self.kb, "webapp", "Auth", "2026-06-05")
         # Initialize the story with required frontmatter before updating

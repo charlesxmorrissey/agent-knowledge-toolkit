@@ -118,10 +118,36 @@ class IndexTest(unittest.TestCase):
         reindex(self.kb)
         self.assertNotIn("tags:", skeleton.read_text())
 
+    def test_reindex_quotes_a_summary_a_yaml_reader_would_reject(self):
+        # Obsidian shows red raw frontmatter for `summary: Fix: x` and
+        # silently truncates `summary: PR #67` at the ` #`.
+        d = self.kb / "stories" / "webapp" / "2026-06-05-auth"
+        d.mkdir(parents=True)
+        story = d / "story.md"
+        story.write_text("---\nrepo: webapp\nslug: auth\nsummary: Fix: quote it, see PR #67\nkeys: a\ntags: [a]\n---\n## Problem\n")
+        os.utime(story, ns=(1_700_000_000_000_000_000, 1_700_000_000_000_000_000))
+        lines, written = reindex(self.kb, with_written=True)
+        self.assertIn('summary: "Fix: quote it, see PR #67"\n', story.read_text())
+        self.assertEqual(story.stat().st_mtime_ns, 1_700_000_000_000_000_000)
+        self.assertEqual(written, ["stories/webapp/2026-06-05-auth/story.md"])
+        # The index line carries the prose, not the quotes.
+        self.assertIn("] Fix: quote it, see PR #67 | keys: a |", lines[0])
+
+    def test_reindex_leaves_a_safe_or_already_quoted_summary_untouched(self):
+        safe = self._write_story("webapp", "auth", "auth", tags="[auth]")
+        d = self.kb / "stories" / "api" / "2026-06-05-retry"
+        d.mkdir(parents=True)
+        quoted = d / "story.md"
+        quoted.write_text('---\nrepo: api\nslug: retry\nsummary: "Fix: done"\nkeys: a\ntags: [a]\n---\n## Problem\n')
+        before = safe.read_text(), quoted.read_text()
+        _, written = reindex(self.kb, with_written=True)
+        self.assertEqual((safe.read_text(), quoted.read_text()), before)
+        self.assertEqual(written, [])
+
     def test_reindex_reports_tagged_count(self):
         self._write_story("webapp", "auth", "auth")
         self._write_story("api", "retry", "retry", tags="[retry]")
-        lines, tagged = reindex(self.kb, with_tags=True)
+        lines, tagged = reindex(self.kb, with_written=True)
         self.assertEqual(len(lines), 2)
         self.assertEqual(tagged, ["stories/webapp/2026-06-05-auth/story.md"])
 
