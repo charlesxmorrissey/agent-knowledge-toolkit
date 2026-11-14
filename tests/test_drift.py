@@ -134,7 +134,7 @@ class DriftModuleTest(unittest.TestCase):
     def test_pointer_appends_to_stale_stories_only(self):
         rows = drift_mod.drift(self.kb, self.main, ["components", "fresh"], self.root)
         written = drift_mod.pointer(self.kb, self.main, rows, "2026-11-01")
-        self.assertEqual(written, ["stories/components/2026-10-28-checkout-build/story.md"])
+        self.assertEqual(written, [("stories/components/2026-10-28-checkout-build/story.md", "appended")])
         text = (self.kb / "stories/components/2026-10-28-checkout-build/story.md").read_text()
         self.assertIn("## Update — 2026-11-01", text)
         self.assertIn(self.main, text)
@@ -152,7 +152,8 @@ class DriftModuleTest(unittest.TestCase):
         self.assertEqual(len(first), 1)
         rows = drift_mod.drift(self.kb, self.main, ["components"], self.root)
         again = drift_mod.pointer(self.kb, self.main, rows, "2026-11-02")
-        self.assertEqual(again, [])
+        # issue #71: the skip is reported, not silent.
+        self.assertEqual(again, [("stories/components/2026-10-28-checkout-build/story.md", "skipped")])
         text = (self.kb / "stories/components/2026-10-28-checkout-build/story.md").read_text()
         self.assertEqual(text.count("pointer."), 1)
 
@@ -224,6 +225,30 @@ class DriftCliTest(unittest.TestCase):
         status = subprocess.run(["git", "-C", str(self.kb), "status", "--porcelain"],
                                 capture_output=True, text=True).stdout
         self.assertEqual(status, "")
+
+    def test_drift_pointer_says_when_a_stale_sibling_is_skipped(self):
+        # issue #71: the second run printed the same `stale` block with no
+        # commit, which read as a failed pointer step.
+        args = ["drift", self.main, "--repos", "components", "--pointer", "--date", "2026-11-01"]
+        self._run(args)
+        f = self.kb / self.main / "story.md"
+        f.write_text(f.read_text() + "\n## Update — 2026-11-02\n\nmain moved again\n")
+        # The pointer commit above carries the real clock, so the main story's
+        # next change has to be later than any run of this test.
+        _commit_all(self.kb, "update 2", "2099-01-01T12:00:00-04:00")
+        before = (self.kb / "stories/components/2026-10-28-checkout-build/story.md").read_text()
+        rc, out = self._run(args)
+        self.assertEqual(rc, 0)
+        self.assertIn("stale", out.splitlines()[0])
+        self.assertIn("pointer skipped: stories/components/2026-10-28-checkout-build/story.md "
+                      "(newest update already points here)", out)
+        self.assertNotIn("pointer appended", out)
+        self.assertEqual((self.kb / "stories/components/2026-10-28-checkout-build/story.md").read_text(), before)
+
+    def test_drift_pointer_says_when_no_sibling_is_stale(self):
+        rc, out = self._run(["drift", self.main, "--repos", "ghost", "--pointer"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.splitlines()[-1], "pointer: no stale sibling story")
 
     def test_drift_truncates_a_long_update_line(self):
         f = self.kb / "stories/components/2026-10-28-checkout-build/story.md"

@@ -123,21 +123,25 @@ def _link_href(main):
 
 def pointer(kb_path, main_story_rel, rows, date):
     """Append the templated pointer update to every stale row's story.
-    Returns the KB-relative story.md paths written. Does not commit."""
+    Returns one (KB-relative story.md path, outcome) pair per stale row, where
+    outcome is "appended" or "skipped", so the caller can say which happened
+    (issue #71: a silent skip read as a failed step). Does not commit."""
     main = main_story_rel.rstrip("/")
     if main.endswith("/story.md"):
         main = main[: -len("/story.md")]
-    written = []
+    outcomes = []
     for row in rows:
         if "stale" not in row["flags"] or not row["story"]:
             continue
         rel = row["story"]["path"]
         upd = row["story"]["update"]
         if upd and main in upd[1]:
-            continue  # its newest update already points here; do not stack pointers
+            # its newest update already points here; do not stack pointers
+            outcomes.append((rel, "skipped"))
+            continue
         story_dir = (Path(kb_path) / rel).parent
         since = story_dir.name[:10]
         update_story(story_dir, _POINTER.format(date=date, since=since, main=main,
                                                  href=_link_href(main)), date)
-        written.append(rel)
-    return written
+        outcomes.append((rel, "appended"))
+    return outcomes

@@ -359,10 +359,17 @@ def main(argv=None):
         for row in rows:
             _print_drift_row(row, root)
         if args.pointer:
-            written = drift_mod.pointer(kb, main_rel, rows, d)
-            for rel in written:
-                print("pointer appended: {}".format(rel))
-            if written:
+            # One line per stale sibling, so a run that writes nothing does
+            # not read as a failed pointer step (issue #71).
+            outcomes = drift_mod.pointer(kb, main_rel, rows, d)
+            for rel, outcome in outcomes:
+                if outcome == "appended":
+                    print("pointer appended: {}".format(rel))
+                else:
+                    print("pointer skipped: {} (newest update already points here)".format(rel))
+            if not outcomes:
+                print("pointer: no stale sibling story")
+            if any(o == "appended" for _, o in outcomes):
                 sys.stderr.write(gitkb.commit_kb(kb, "drift pointers: {}".format(sp.name)) + "\n")
         return 0
 

@@ -23,7 +23,9 @@ End-of-session routine. Do these in order:
    - Work landed in sibling repos but the record is in this story →
      `akt drift <story_path> --repos a,b --pointer` appends a pointer update
      to each sibling story flagged `stale`, so a session started there finds
-     this story (skips siblings whose newest update already names it).
+     this story. A sibling whose newest update already names it prints
+     `pointer skipped` and is left alone: that is the expected result, not
+     a failure, so do not run it again.
 2. **Learnings pass**: run `akt learn list --status candidate --compact` and
    compare the session's transferable lessons (full text of a likely match via
    `akt learn show <id>`) — matches get
