@@ -158,7 +158,9 @@ components,assets` says which sibling moved past the story's last change.
 At resume, a `newer` sibling means read its story or git log before building on the
 main one. At wrap, `--pointer` appends a short templated update to each `stale`
 sibling story linking the main story, so a session started in that repo finds the
-record instead of a story that stopped a week earlier.
+record instead of a story that stopped a week earlier. A sibling whose newest update
+already links the main story keeps its `stale` flag, and `--pointer` prints
+`pointer skipped` for it and writes nothing.
 
 ## Commands
 
@@ -174,7 +176,7 @@ record instead of a story that stopped a week earlier.
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
 | `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
-| `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved as `../<repo>`): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB |
+| `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved as `../<repo>`): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB. It prints one line per stale sibling: `pointer appended: <path>`, or `pointer skipped: <path> (newest update already points here)` when the sibling already links the main story |
 | `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
 | `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files, and repair each story's frontmatter for YAML readers: the `tags` line from its `keys`, and quotes around a `summary` that needs them (a story that is already right is not touched) |
 
