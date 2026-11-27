@@ -16,3 +16,15 @@ Releases on this repo are made by hand: a `vX.Y.Z` tag plus a GitHub release. A 
 1. Run `git describe --tags --abbrev=0` to get the last tag.
 2. Run `git log --oneline <tag>..main`.
 3. If any commit since the tag is a fix or a feature, report it as "unreleased: N commits since <tag>" and offer to cut the next version.
+
+## Wrap extras
+
+Each PR updates the README command tables, but the overview text and the knowledge base README fell behind two days in a row. If the session released a version, or merged a fix or a feature, do this before the safe-exit check:
+
+1. Run `git log --oneline <tag before the session>..main` to list what the session shipped.
+2. Read the README status line, the `**Shipped:**` list and the `**Next:**` list. Make sure that each new command, subcommand and flag has a line in `**Shipped:**`, and that `**Next:**` names no item that shipped.
+3. Compare `akt --help` and `akt learn --help` with the README command tables. Each subcommand must have a row.
+4. Read the command list in the knowledge base `README.md`. Add each new command.
+5. Read this file. Make sure that Resume extras and Wrap extras still agree with how the tool works.
+6. If a file needs a change, make it. The toolkit README goes in a docs PR with no release. The knowledge base README is a direct commit and push.
+7. Report the result of each step, also if nothing needed a change.
