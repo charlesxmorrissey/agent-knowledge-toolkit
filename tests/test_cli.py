@@ -381,6 +381,24 @@ class CliTest(unittest.TestCase):
         self.assertIn("R" * 100, out)
         self.assertIn("webapp/2026-07-01-a", out)
 
+    def test_learn_match_prints_a_block_per_lesson(self):
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
+        self._run(["learn", "add", "quote-yaml", "Quote a YAML value that holds a colon",
+                   "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "add", "sort-keys", "Use portable sort keys in a script",
+                   "--story", "webapp/2026-07-01-a"])
+        rc, out = self._run(["learn", "match", "yaml colon broke the parser", "zzz"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.splitlines(), [
+            "lesson: yaml colon broke the parser",
+            "  - [quote-yaml] Quote a YAML value that holds a colon | hits: 1 | status: candidate",
+            "lesson: zzz",
+            "  no match",
+        ])
+        # the printed id goes straight into reinforce
+        self.assertNotIn("webapp/2026-07-01-a", out)
+
     def test_learn_show_unknown_id_exits_2(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as ctx:

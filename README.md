@@ -189,6 +189,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | `graduate <id>`                                  | Promote; global scope also writes KB `AGENTS.md` |
 | `wont <id>`                                      | Mark wont-graduate; stops proposals              |
 | `list [--status STATUS] [--repo REPO] [--compact]` | Print the ledger; `--compact` = id + truncated rule (the scan-pass view) |
+| `match "<lesson>"... [--limit N] [--status STATUS]` | Rank the ledger against each lesson and print the best few (default 5) with the full rule; the learnings pass uses this, so its cost does not grow with the ledger |
 | `show <id>`                                      | Print one entry's full ledger line               |
 | `prune`                                          | Print-only staleness report                      |
 

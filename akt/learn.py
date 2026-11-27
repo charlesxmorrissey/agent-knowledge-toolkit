@@ -3,9 +3,12 @@
 Source of truth (NOT derived): hits and statuses can't be rebuilt from
 stories. One parseable line per candidate, in the index.py idiom.
 """
+import math
 import re
 from datetime import date as _date, timedelta
 from pathlib import Path
+
+from akt.recall import tokenize
 
 LEARNINGS_FILE = "LEARNINGS.md"
 _HEADER = "# Learnings\n\nOne entry per candidate. Managed by `akt learn` — do not hand-edit.\n"
@@ -43,6 +46,13 @@ def compact_line(entry):
     rule = entry["rule"] if len(entry["rule"]) <= 80 else entry["rule"][:79] + "…"
     return "- [{}] {} | hits: {} | status: {}".format(
         entry["id"], rule, entry["hits"], entry["status"])
+
+
+def match_line(entry):
+    """Match-pass format: the whole rule, no stories. A handful of lines print,
+    so the rule needs no truncation and no follow-up `show`."""
+    return "- [{}] {} | hits: {} | status: {}".format(
+        entry["id"], entry["rule"], entry["hits"], entry["status"])
 
 
 def _ledger_file(kb_path):
@@ -154,6 +164,41 @@ def wont(kb_path, learn_id):
     entry["status"] = "wont-graduate"
     write_learnings(kb_path, entries)
     return entry
+
+
+def _tokens(entry):
+    return set(tokenize(entry["rule"])) | set(tokenize(entry["id"]))
+
+
+def match(kb_path, lesson, limit=5, status=None):
+    """Ledger entries ranked against one lesson, best first.
+
+    The scan pass used to read every candidate, and that list grows with every
+    story. This ranks in the CLI and returns a handful, so the cost of the pass
+    no longer depends on the ledger size.
+
+    A shared word counts for log(N / entries that hold it): a word in a few
+    rules counts for a lot, and a word in every rule counts for nothing. Every
+    status is ranked unless `status` is given, so a lesson that is already a
+    graduated rule shows up as one and is not added again as a new candidate.
+    """
+    entries = read_learnings(kb_path)
+    bags = [_tokens(e) for e in entries]
+    df = {}
+    for bag in bags:
+        for tok in bag:
+            df[tok] = df.get(tok, 0) + 1
+    n = len(entries)
+    wanted = set(tokenize(lesson))
+    scored = []
+    for pos, (entry, bag) in enumerate(zip(entries, bags)):
+        if status and entry["status"] != status:
+            continue
+        s = sum(math.log(n / df[tok]) for tok in wanted & bag)
+        if s > 0:
+            scored.append((-s, pos, entry))
+    scored.sort(key=lambda t: t[:2])
+    return [entry for _, _, entry in scored[:limit]]
 
 
 def prune_report(kb_path, today, cutoff_days):

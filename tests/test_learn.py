@@ -14,6 +14,8 @@ from akt.learn import (
     wont,
     prune_report,
     rule_block,
+    match,
+    match_line,
 )
 
 
@@ -159,3 +161,52 @@ class LedgerOpsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MatchTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.kb = Path(self.tmp.name)
+        write_learnings(self.kb, [
+            _entry(id="skip-prints-a-line",
+                   rule="A step that skips an item must print one line for the item"),
+            _entry(id="quote-yaml-values",
+                   rule="Quote a YAML value that holds a colon before a parser reads the item",
+                   status="graduated-global"),
+            _entry(id="sort-keys-portable",
+                   rule="Use portable sort keys in a script before the item is read"),
+        ])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _ids(self, *args, **kwargs):
+        return [e["id"] for e in match(self.kb, *args, **kwargs)]
+
+    def test_best_overlap_ranks_first(self):
+        self.assertEqual(self._ids("the parser choked on a colon in a YAML value")[0],
+                         "quote-yaml-values")
+
+    def test_word_in_every_rule_scores_nothing(self):
+        # "item" is in all three rules, so it cannot tell them apart.
+        self.assertEqual(self._ids("item"), [])
+
+    def test_id_words_count(self):
+        self.assertEqual(self._ids("portable"), ["sort-keys-portable"])
+
+    def test_no_shared_word_returns_nothing(self):
+        self.assertEqual(self._ids("zzz qqq"), [])
+
+    def test_limit_caps_the_result(self):
+        # "before" is in two of the three rules, so both match without a cap.
+        self.assertEqual(len(self._ids("before")), 2)
+        self.assertEqual(len(self._ids("before", limit=1)), 1)
+
+    def test_all_statuses_ranked_unless_one_is_named(self):
+        self.assertIn("quote-yaml-values", self._ids("yaml colon"))
+        self.assertEqual(self._ids("yaml colon", status="candidate"), [])
+
+    def test_match_line_keeps_whole_rule_and_drops_stories(self):
+        line = match_line(_entry(rule="R" * 200))
+        self.assertIn("R" * 200, line)
+        self.assertNotIn("webapp/", line)

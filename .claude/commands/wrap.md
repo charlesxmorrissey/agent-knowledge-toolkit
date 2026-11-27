@@ -26,10 +26,12 @@ End-of-session routine. Do these in order:
      this story. A sibling whose newest update already names it prints
      `pointer skipped` and is left alone: that is the expected result, not
      a failure, so do not run it again.
-2. **Learnings pass**: run `akt learn list --status candidate --compact` and
-   compare the session's transferable lessons (full text of a likely match via
-   `akt learn show <id>`) — matches get
-   `akt learn reinforce <id> --story <repo>/<date>-<slug>`, new ones
+2. **Learnings pass**: run `akt learn match "<lesson>" "<lesson>"` with one
+   quoted argument per transferable lesson from the session — it prints the
+   closest ledger entries under each lesson. The same lesson in different
+   words is a match and gets
+   `akt learn reinforce <id> --story <repo>/<date>-<slug>` (also when the
+   entry is already graduated); a lesson with no real match gets
    `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any
    `PROPOSE:` line to the user verbatim and act on the answer
    (`akt learn graduate <id>` / `akt learn wont <id>`); a REPO-LOCAL

@@ -232,6 +232,14 @@ def build_parser():
     lshow = lsub.add_parser("show", help="print one entry's full ledger line")
     lshow.add_argument("id")
 
+    lm = lsub.add_parser(
+        "match", help="rank ledger entries against a lesson; prints the best few")
+    lm.add_argument("lesson", nargs="+",
+                    help="one lesson per argument, each in quotes")
+    lm.add_argument("--limit", type=int, default=5, help="entries per lesson (default 5)")
+    lm.add_argument("--status", default=None, choices=learn_mod.STATUSES,
+                    help="rank only this status (default: all)")
+
     lsub.add_parser("prune", help="print-only staleness report")
 
     return p
@@ -426,6 +434,14 @@ def main(argv=None):
             elif args.learn_cmd == "show":
                 entry = learn_mod._find(learn_mod.read_learnings(kb), args.id)
                 print(learn_mod.build_learning_line(entry))
+            elif args.learn_cmd == "match":
+                for lesson in args.lesson:
+                    print("lesson: {}".format(lesson))
+                    found = learn_mod.match(kb, lesson, args.limit, args.status)
+                    for entry in found:
+                        print("  " + learn_mod.match_line(entry))
+                    if not found:
+                        print("  no match")
             elif args.learn_cmd == "prune":
                 cutoff = int(config.get("prune_days") or 90)
                 stale_c, stale_g = learn_mod.prune_report(kb, today, cutoff)

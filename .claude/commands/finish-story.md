@@ -43,11 +43,12 @@ allowed-tools: Bash, Read
    remote or you're offline (the story is still committed locally).
 
 4. **Learnings pass** — after the story commit:
-   - Run `akt learn list --status candidate --compact` (full text of a
-     likely match via `akt learn show <id>`).
-   - For each transferable lesson in the story you just captured (a gotcha or
-     decision that would help on a future task): if it matches an existing
-     candidate — same lesson in different words counts — run
+   - List the transferable lessons in the story you just captured (a gotcha
+     or decision that would help on a future task) and run
+     `akt learn match "<lesson>" "<lesson>"`, one quoted argument per lesson.
+     It prints the closest ledger entries under each lesson.
+   - For each lesson: if a printed entry is the same lesson — different words
+     count, and so does an entry that is already graduated — run
      `akt learn reinforce <id> --story <repo>/<date>-<slug>`; if it's new, run
      `akt learn add <kebab-id> "<rule as one instruction sentence, no '|'>" --story <repo>/<date>-<slug>`.
    - If any command printed a `PROPOSE:` line, relay it to the user verbatim
