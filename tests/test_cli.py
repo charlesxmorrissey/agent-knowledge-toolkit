@@ -489,6 +489,35 @@ class CliTest(unittest.TestCase):
             self._run_stderr(["learn", "reinforce", "nope", "--story", "webapp/2026-07-01-a"])
         self.assertFalse((self.cfg.parent / "akt-match-log.jsonl").exists())
 
+    def test_learn_merge_prints_the_kept_line_and_commits(self):
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a", "shop/2026-07-02-b", "api/2026-07-03-c")
+        self._run(["learn", "add", "keep", "Quote a YAML value", "--story", "webapp/2026-07-01-a",
+                   "--date", "2026-07-01"])
+        self._run(["learn", "reinforce", "keep", "--story", "shop/2026-07-02-b",
+                   "--date", "2026-07-02"])
+        self._run(["learn", "add", "drop", "YAML colons need quotes", "--story", "api/2026-07-03-c",
+                   "--date", "2026-07-03"])
+        self._git_kb()
+        rc, out = self._run(["learn", "merge", "keep", "drop"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.splitlines()[0],
+                         "- [keep] Quote a YAML value | hits: 3 | status: candidate | last: 2026-07-03"
+                         " | stories: webapp/2026-07-01-a, shop/2026-07-02-b, api/2026-07-03-c")
+        self.assertIn("PROPOSE: graduate 'keep' as GLOBAL", out.splitlines()[1])
+        import subprocess
+        log = subprocess.run(["git", "-C", str(self.kb), "log", "-1", "--format=%s"],
+                             capture_output=True, text=True).stdout.strip()
+        self.assertEqual(log, "learn: merge drop into keep")
+        rc, out = self._run(["learn", "list"])
+        self.assertNotIn("[drop]", out)
+
+    def test_learn_merge_unknown_id_exits_2(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit) as ctx:
+            self._run_stderr(["learn", "merge", "nope", "also-nope"])
+        self.assertEqual(ctx.exception.code, 2)
+
     def test_learn_show_unknown_id_exits_2(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as ctx:

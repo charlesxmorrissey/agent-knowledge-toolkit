@@ -345,3 +345,120 @@ class RulesForTest(unittest.TestCase):
     def test_empty_ledger_prints_nothing(self):
         write_learnings(self.kb, [])
         self.assertEqual(self._ids("paste rows"), [])
+
+
+class MergeTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.kb = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _merge(self, keep, drop, **kw):
+        from akt.learn import merge
+        return merge(self.kb, keep, drop, kw.pop("threshold", 3), **kw)
+
+    def test_merge_unions_stories_and_removes_the_dropped_entry(self):
+        add(self.kb, "keep", "Quote a YAML value", "webapp/2026-07-01-a", "2026-07-01")
+        add(self.kb, "drop", "YAML colons need quotes", "shop/2026-07-05-b", "2026-07-05")
+        e, prop, note = self._merge("keep", "drop")
+        self.assertEqual(e["stories"], ["webapp/2026-07-01-a", "shop/2026-07-05-b"])
+        self.assertEqual((e["hits"], e["last"], e["rule"]), (2, "2026-07-05", "Quote a YAML value"))
+        self.assertIsNone(prop)
+        self.assertIsNone(note)
+        self.assertEqual([x["id"] for x in read_learnings(self.kb)], ["keep"])
+
+    def test_a_story_in_both_entries_counts_once(self):
+        add(self.kb, "keep", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        add(self.kb, "drop", "Same rule", "webapp/2026-07-01-a", "2026-07-01")
+        reinforce(self.kb, "drop", "shop/2026-07-02-b", "2026-07-02", 9)
+        e, _, _ = self._merge("keep", "drop")
+        self.assertEqual(e["hits"], 2)
+        self.assertEqual(e["stories"], ["webapp/2026-07-01-a", "shop/2026-07-02-b"])
+
+    def test_merge_does_not_lower_hits_that_exceed_the_story_count(self):
+        add(self.kb, "keep", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        reinforce(self.kb, "keep", "webapp/2026-07-01-a", "2026-07-02", 9)  # 2 hits, 1 story
+        add(self.kb, "drop", "Same rule", "shop/2026-07-03-b", "2026-07-03")
+        e, _, _ = self._merge("keep", "drop")
+        self.assertEqual((e["hits"], len(e["stories"])), (3, 2))
+
+    def test_merge_keeps_the_later_date_when_the_kept_entry_is_newer(self):
+        add(self.kb, "keep", "Rule", "webapp/2026-07-09-a", "2026-07-09")
+        add(self.kb, "drop", "Same rule", "shop/2026-07-03-b", "2026-07-03")
+        self.assertEqual(self._merge("keep", "drop")[0]["last"], "2026-07-09")
+
+    def test_merge_proposes_at_threshold_with_the_new_scope(self):
+        add(self.kb, "keep", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        reinforce(self.kb, "keep", "webapp/2026-07-02-b", "2026-07-02", 9)
+        add(self.kb, "drop", "Same rule", "shop/2026-07-03-c", "2026-07-03")
+        _, prop, _ = self._merge("keep", "drop")
+        self.assertIn("PROPOSE: graduate 'keep' as GLOBAL (3 hits across 2 repos)", prop)
+
+    def test_rule_flag_replaces_the_text_and_rejects_a_pipe(self):
+        add(self.kb, "keep", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        add(self.kb, "drop", "Better wording", "shop/2026-07-03-c", "2026-07-03")
+        with self.assertRaises(ValueError):
+            self._merge("keep", "drop", rule="bad | text")
+        self.assertEqual(len(read_learnings(self.kb)), 2)
+        self.assertEqual(self._merge("keep", "drop", rule="Better wording")[0]["rule"],
+                         "Better wording")
+
+    def test_merge_rejects_itself_and_unknown_ids(self):
+        add(self.kb, "keep", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        for pair in (("keep", "keep"), ("keep", "nope"), ("nope", "keep")):
+            with self.assertRaises(ValueError):
+                self._merge(*pair)
+        self.assertEqual(len(read_learnings(self.kb)), 1)
+
+    def _graduated(self, core):
+        add(self.kb, "rule", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        reinforce(self.kb, "rule", "shop/2026-07-02-b", "2026-07-02", 9)
+        graduate(self.kb, "rule", core=core)
+        add(self.kb, "cand", "Same rule", "api/2026-07-03-c", "2026-07-03")
+
+    def test_a_graduated_rule_cannot_be_the_dropped_entry(self):
+        self._graduated(core=False)
+        with self.assertRaises(ValueError) as ctx:
+            self._merge("cand", "rule")
+        self.assertIn("akt learn merge rule cand", str(ctx.exception))
+        self.assertEqual(len(read_learnings(self.kb)), 2)
+
+    def test_merge_into_a_core_rule_updates_the_agents_comment(self):
+        self._graduated(core=True)
+        agents = self.kb / "AGENTS.md"
+        agents.write_text("# Global Rules\n\n- Other\n  <!-- akt: rule-two | 2 hits -->\n\n"
+                          "- Rule\n  <!-- akt: rule | 2 hits -->\n")  # hand-trimmed provenance
+        e, prop, note = self._merge("rule", "cand")
+        self.assertEqual((e["hits"], e["status"]), (3, "graduated-global"))
+        self.assertIsNone(prop)
+        self.assertIn("is now 3", note)
+        self.assertEqual(agents.read_text(),
+                         "# Global Rules\n\n- Other\n  <!-- akt: rule-two | 2 hits -->\n\n"
+                         "- Rule\n  <!-- akt: rule | 3 hits -->\n")
+
+    def test_merge_into_a_core_rule_with_no_comment_says_so(self):
+        self._graduated(core=True)
+        (self.kb / "AGENTS.md").write_text("# Global Rules\n")
+        _, _, note = self._merge("rule", "cand")
+        self.assertIn("only the ledger changed", note)
+
+    def test_merge_into_a_recall_rule_needs_no_note(self):
+        self._graduated(core=False)
+        e, prop, note = self._merge("rule", "cand")
+        self.assertEqual((e["hits"], e["status"], prop, note),
+                         (3, "graduated-recall", None, None))
+
+    def test_merge_into_a_repo_rule_notes_the_stale_comment(self):
+        add(self.kb, "rule", "Rule", "webapp/2026-07-01-a", "2026-07-01")
+        graduate(self.kb, "rule")
+        add(self.kb, "cand", "Same rule", "webapp/2026-07-03-c", "2026-07-03")
+        _, _, note = self._merge("rule", "cand")
+        self.assertIn("repo-local", note)
+
+    def test_rule_flag_is_refused_on_a_graduated_entry(self):
+        self._graduated(core=False)
+        with self.assertRaises(ValueError):
+            self._merge("rule", "cand", rule="New text")
+        self.assertEqual(len(read_learnings(self.kb)), 2)
