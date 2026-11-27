@@ -57,6 +57,28 @@ def status_entries(kb):
     return entries
 
 
+def commit_times(kb, subdir):
+    """{KB-relative path: time of the newest commit that touched it} for every
+    file under `subdir`, from one `git log` call. {} when `kb` isn't a repo.
+
+    One call for the folder, not one per file: a per-story `git log` made
+    `latest` about 20 times slower when it was tried (issue #37).
+    """
+    if not is_repo(kb):
+        return {}
+    ok, out = _git(kb, "-c", "core.quotepath=off", "log", "--format=@%ct",
+                   "--name-only", "--relative", "--", subdir)
+    if not ok:
+        return {}
+    times, current = {}, None
+    for line in out.splitlines():
+        if line.startswith("@") and line[1:].isdigit():
+            current = int(line[1:])
+        elif line and current is not None:
+            times.setdefault(line, current)  # log is newest first
+    return times
+
+
 def commit_kb(kb, message):
     """add -A, commit, and push (if an origin exists). Returns a status line."""
     kb = Path(kb)
