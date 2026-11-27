@@ -446,6 +446,49 @@ class CliTest(unittest.TestCase):
         # the printed id goes straight into reinforce
         self.assertNotIn("webapp/2026-07-01-a", out)
 
+    def test_learn_match_logs_scores_outside_the_knowledge_base(self):
+        import json
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
+        self._run(["learn", "add", "quote-yaml", "Quote a YAML value that holds a colon",
+                   "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "add", "sort-keys", "Use portable sort keys in a script",
+                   "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "match", "yaml colon broke the parser", "zzz"])
+        self._run(["learn", "reinforce", "quote-yaml", "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "add", "new-one", "A lesson with no match", "--story", "webapp/2026-07-01-a"])
+        log = self.cfg.parent / "akt-match-log.jsonl"
+        self.assertNotIn(self.kb, log.parents)
+        records = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertEqual([(r["op"], r.get("id") or r.get("lesson")) for r in records], [
+            ("add", "quote-yaml"), ("add", "sort-keys"),
+            ("match", "yaml colon broke the parser"), ("match", "zzz"),
+            ("reinforce", "quote-yaml"), ("add", "new-one"),
+        ])
+        self.assertEqual(records[2]["results"], [["quote-yaml", 2.0]])
+        self.assertEqual(records[3]["results"], [])
+        rc, out = self._run(["learn", "scores"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.splitlines(), [
+            "true matches (a result id was reinforced after the match): 1",
+            "  2.0  [quote-yaml]  yaml colon broke the parser",
+            "no match (the lesson was added as a new entry): 1",
+            "  0.0  [-]  zzz",
+            "lowest true match: 2.0 | highest loose result: 0.0",
+        ])
+
+    def test_learn_match_with_a_status_filter_is_not_logged(self):
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
+        self._run(["learn", "match", "yaml colon", "--status", "candidate"])
+        self.assertFalse((self.cfg.parent / "akt-match-log.jsonl").exists())
+
+    def test_a_failed_reinforce_is_not_logged(self):
+        self._run(["init", str(self.kb)])
+        with self.assertRaises(SystemExit):
+            self._run_stderr(["learn", "reinforce", "nope", "--story", "webapp/2026-07-01-a"])
+        self.assertFalse((self.cfg.parent / "akt-match-log.jsonl").exists())
+
     def test_learn_show_unknown_id_exits_2(self):
         self._run(["init", str(self.kb)])
         with self.assertRaises(SystemExit) as ctx:

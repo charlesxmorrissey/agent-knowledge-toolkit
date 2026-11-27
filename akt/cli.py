@@ -13,6 +13,7 @@ from akt import init as init_mod
 from akt import install as install_mod
 from akt import gitkb
 from akt import learn as learn_mod
+from akt import matchlog
 from akt import drift as drift_mod
 from akt.paths import rel_to_kb
 
@@ -202,7 +203,7 @@ def build_parser():
     sub.add_parser(
         "repo", help="print the current repo name: the <repo> that latest and start-story take")
 
-    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/match/graduate/load/wont/list/show/prune")
+    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/match/graduate/load/wont/list/show/prune/scores")
     lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
 
     la = lsub.add_parser("add", help="new candidate at hits 1")
@@ -252,6 +253,9 @@ def build_parser():
                     help="rank only this status (default: all)")
 
     lsub.add_parser("prune", help="print-only staleness report")
+
+    lsub.add_parser(
+        "scores", help="match scores from past runs: true matches against lessons with none")
 
     return p
 
@@ -429,6 +433,7 @@ def main(argv=None):
                 entry = learn_mod.add(kb, learn_id, rule,
                                       _normalize_learn_story(args.story, kb), today)
                 print(learn_mod.build_learning_line(entry))
+                matchlog.log_action("add", learn_id)
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(learn_id)) + "\n")
             elif args.learn_cmd == "reinforce":
                 threshold = int(config.get("learn_threshold") or 3)
@@ -437,6 +442,7 @@ def main(argv=None):
                 print(learn_mod.build_learning_line(entry))
                 if proposal:
                     print(proposal)
+                matchlog.log_action("reinforce", args.id)
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: reinforce {}".format(args.id)) + "\n")
             elif args.learn_cmd == "graduate":
                 entry, block = learn_mod.graduate(kb, args.id, core=args.core)
@@ -485,6 +491,12 @@ def main(argv=None):
                         print("  " + learn_mod.match_line(entry, score))
                     if not found:
                         print("  no match")
+                    # A filtered ranking is not the one a cutoff would apply to.
+                    if not args.status:
+                        matchlog.log_match(lesson, found)
+            elif args.learn_cmd == "scores":
+                for line in matchlog.report(matchlog.read_log()):
+                    print(line)
             elif args.learn_cmd == "prune":
                 cutoff = int(config.get("prune_days") or 90)
                 stale_c, stale_g = learn_mod.prune_report(kb, today, cutoff)
