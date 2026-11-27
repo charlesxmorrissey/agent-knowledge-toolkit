@@ -86,6 +86,59 @@ class RecallTest(unittest.TestCase):
         os.utime(self.kb / "stories/webapp/2026-08-10-attribution-form/story.md", (2000, 2000))
         self.assertEqual(latest(self.kb, "webapp")["slug"], "attribution-form")
 
+    def _git(self, *args, when=None):
+        import os
+        import subprocess
+        env = dict(os.environ)
+        if when:
+            env["GIT_AUTHOR_DATE"] = env["GIT_COMMITTER_DATE"] = when
+        subprocess.run(["git", "-C", str(self.kb), *args], check=True, env=env,
+                       capture_output=True)
+
+    def _committed_stories(self):
+        """Two stories. `older` is committed first, `newer` second, then every
+        mtime is set the other way round, as it would not be on a real clone
+        but enough to prove mtime is not what ranks them."""
+        import os
+        self._git("init", "-q")
+        self._git("config", "user.email", "t@t.test")
+        self._git("config", "user.name", "t")
+        for slug, when in (("zz-older", "2026-08-01T10:00:00"), ("aa-newer", "2026-08-02T10:00:00")):
+            rel = "stories/webapp/2026-08-01-{}/story.md".format(slug)
+            f = self.kb / rel
+            f.parent.mkdir(parents=True)
+            f.write_text("---\nrepo: webapp\nslug: {}\ndate: d\nsummary: s\nkeys: k\n---\nbody".format(slug))
+            self._git("add", "-A")
+            self._git("commit", "-q", "-m", slug, when=when)
+        os.utime(self.kb / "stories/webapp/2026-08-01-zz-older/story.md", (2000, 2000))
+        os.utime(self.kb / "stories/webapp/2026-08-01-aa-newer/story.md", (1000, 1000))
+
+    def test_latest_ranks_by_commit_time_not_mtime(self):
+        # issue #82: on a fresh clone every mtime is the clone time, so the
+        # path decided. The later commit must win whatever the mtimes say.
+        self._committed_stories()
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "aa-newer")
+
+    def test_latest_same_mtime_everywhere_still_picks_last_commit(self):
+        import os
+        self._committed_stories()
+        for f in (self.kb / "stories").glob("*/*/story.md"):
+            os.utime(f, (5000, 5000))
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "aa-newer")
+
+    def test_latest_uncommitted_edit_counts_as_newest(self):
+        self._committed_stories()
+        f = self.kb / "stories/webapp/2026-08-01-zz-older/story.md"
+        f.write_text(f.read_text() + "\nedited and not committed")
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "zz-older")
+
+    def test_latest_open_story_with_no_commit_counts_by_mtime(self):
+        self._committed_stories()
+        f = self.kb / "stories/webapp/2026-08-03-open/story.md"
+        f.parent.mkdir(parents=True)
+        f.write_text("---\nrepo: webapp\nslug: open\ndate: d\nsummary: \nkeys: \n---\nbody")
+        self.assertEqual(latest(self.kb, "webapp")["slug"], "open")
+
     def test_latest_includes_open_story_not_yet_indexed(self):
         # issues #35/#37: start-story doesn't index, so an open story that got
         # update-story appends after a finished one was invisible to resume.

@@ -7,6 +7,7 @@ vector search without changing callers or artifacts.
 import re
 from pathlib import Path
 
+from akt import gitkb
 from akt.frontmatter import parse_frontmatter, split_keys
 from akt.index import read_index_lines, parse_index_line
 from akt.paths import rel_to_kb
@@ -24,11 +25,13 @@ def _haystack(entry):
 def latest(kb_path, repo):
     """Most recently ACTIVE story entry for a repo, or None.
 
-    Ranked by story.md mtime so an update-story append counts as recency —
-    lexical path order alone picks the wrong story when two share a date
-    prefix (issues #24/#25). Path is the tiebreak.
-    # ponytail: mtime, not git commit time — a fresh clone flattens mtimes
-    # and degrades to path order; switch to git log -1 --format=%ct if that bites.
+    Ranked by the time of the last knowledge base commit that touched
+    story.md, so an update-story append counts as recency — lexical path
+    order alone picks the wrong story when two share a date prefix (issues
+    #24/#25). Commit time, not file mtime: a fresh clone gives every file the
+    time of the clone, and then the path decided (issue #82). A story with
+    uncommitted changes or no commit yet (an open story, a KB that is not a
+    git repo) falls back to its mtime. Path is the tiebreak.
     """
     entries = {
         e["path"]: e
@@ -51,12 +54,17 @@ def latest(kb_path, repo):
             }
     entries = list(entries.values())
 
+    committed = gitkb.commit_times(kb_path, "stories/{}".format(repo))
+    dirty = {path for _, path in gitkb.status_entries(kb_path)} if committed else set()
+
     def activity(entry):
-        f = Path(kb_path) / entry["path"]
+        rel = entry["path"]
+        if rel in committed and rel not in dirty:
+            return (float(committed[rel]), rel)
         try:
-            return (f.stat().st_mtime, entry["path"])
+            return ((Path(kb_path) / rel).stat().st_mtime, rel)
         except OSError:
-            return (0.0, entry["path"])
+            return (0.0, rel)
 
     return max(entries, key=activity) if entries else None
 
