@@ -202,7 +202,7 @@ def build_parser():
     sub.add_parser(
         "repo", help="print the current repo name: the <repo> that latest and start-story take")
 
-    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/graduate/wont/list/show/prune")
+    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/match/graduate/load/wont/list/show/prune")
     lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
 
     la = lsub.add_parser("add", help="new candidate at hits 1")

@@ -21,9 +21,10 @@ why something was built the way it was, what was tried and rejected, what to wat
 out for. AKT makes capturing that nearly free, and — more importantly — makes it
 **discoverable** at the moment a new task begins.
 
-> **Status: kernel MVP.** This is the portable core — capture + recall + continuity.
-> The planning/workflow toolkit and plugin distribution are designed but not yet
-> built (see [Status & roadmap](#status--roadmap)).
+> **Status: pre-1.0, in daily use.** Capture, recall, continuity and the learning
+> protocol are built. Commands and file formats can still change between minor
+> versions. Plugin distribution is designed but not built (see
+> [Status & roadmap](#status--roadmap)).
 
 ## How it works
 
@@ -41,8 +42,10 @@ out for. AKT makes capturing that nearly free, and — more importantly — make
   prompt the agent to record the handoff/decision at the moment it already has the
   context in head.
 
-Three tiers: `sessions/` (transient) → `story.md` (durable, per-task) → `AGENTS.md`
-(durable, global rules), with `INDEX.md` as the lens over the middle tier.
+Three tiers: `sessions/` (transient) → `story.md` (durable, per-task) → rules (durable,
+global), with `INDEX.md` as the lens over the middle tier. A rule that applies in every
+repo lives in `AGENTS.md` and loads in every session. A rule about one tool or platform
+stays in `LEARNINGS.md`, and `akt recall` prints it when a task matches.
 
 ## Requirements
 
@@ -177,7 +180,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
 | `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath, then any graduated rule that matches the task and is not loaded in every session                                                               |
 | `repo`                                                  | Print the current repo name: the `<repo>` that `latest` and `start-story` take. In a git worktree it is the name of the main checkout, not of the worktree directory |
-| `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
+| `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query. Ranked by the last knowledge base commit for each story, so a fresh clone gives the same answer; a story with uncommitted changes ranks by its file time                |
 | `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved beside the main checkout of the current repo): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB. It prints one line per stale sibling: `pointer appended: <path>`, or `pointer skipped: <path> (newest update already points here)` when the sibling already links the main story |
 | `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
 | `reindex`                                               | Rebuild `INDEX.md` from all `story.md` files, and repair each story's frontmatter for YAML readers: the `tags` line from its `keys`, and quotes around a `summary` that needs them (a story that is already right is not touched) |
@@ -209,7 +212,7 @@ ledger is touched.
 - `/start-story` — begin a story for the current repo
 - `/update-story` — append a dated update to an open story and commit it
 - `/finish-story` — distill the story, index it, and commit + push the knowledge base
-- `/recall` — surface and judge relevant past stories before starting work
+- `/recall` — surface and judge relevant past stories, and any graduated rule that matches the task, before starting work
 - `/wrap` — end of session: capture the story (update vs. new), run the learnings pass, report what's open
 
 `/resume` and `/wrap` each include a **repo extras** step: put a `## Resume extras`
@@ -308,6 +311,15 @@ python3 -m unittest discover -s tests
   and `akt install` prunes symlinks to retired commands.
 - `digest [--since]` — cross-repo activity since a date (new stories + `## Update` appends),
   the knowledge-base half of a daily status; pipe it wherever your standup lives.
+- `drift` — for a story whose work lands in several repos: which sibling repo moved past
+  the story's last change, with `--pointer` to link stale sibling stories back to it.
+- Ranking that holds up as the knowledge base grows: `recall` and `learn match` weight a
+  shared word by how rare it is and mark a long text down, and `learn match` gives the
+  learnings pass the few closest ledger entries, each with a score, so the pass does not
+  read the whole ledger.
+- `akt repo` — the repo name for `latest` and `start-story`, correct inside a git
+  worktree. `latest` ranks by knowledge base commit time, so a second machine with a
+  fresh clone resumes from the same story.
 
 **Works with your existing workflow.** AKT deliberately ships no planner, PR tool,
 or review flow. Anything you already use — Superpowers, a Workflow script, your own
@@ -317,7 +329,10 @@ workflow toolkit" layer for this; the ecosystem filled it, so that layer is reti
 
 **Next:**
 
-1. **Distribution** — a Claude Code plugin for public distribution (`akt install`
+1. **Ledger upkeep** — `learn merge` for candidates that are the same lesson (#80), and a
+   score cutoff so `learn match` prints `no match` for a lesson with none (#75).
+2. **`akt doctor`** — one command that checks the install and the knowledge base (#81).
+3. **Distribution** (deferred) — a Claude Code plugin for public distribution (`akt install`
    covers single-user setup; the plugin is the answer for versioned, multi-user installs).
 
 Design specs and implementation plans live in [`docs/superpowers/`](docs/superpowers/).
