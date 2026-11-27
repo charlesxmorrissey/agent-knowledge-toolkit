@@ -6,6 +6,7 @@ from datetime import date as _date
 from pathlib import Path
 
 from akt import config
+from akt import doctor as doctor_mod
 from akt import story as story_mod
 from akt import recall as recall_mod
 from akt import index as index_mod
@@ -158,6 +159,10 @@ def build_parser():
 
     sub.add_parser("install", help="symlink launcher, slash commands, and rule into ~/.claude and ~/.local/bin")
 
+    pdoc = sub.add_parser(
+        "doctor", help="check the install and the knowledge base; changes nothing, exits 1 on a failed check")
+    pdoc.add_argument("--quiet", action="store_true", help="print only the failed checks")
+
     ps = sub.add_parser("start-story", help="scaffold a new story")
     ps.add_argument("repo")
     ps.add_argument("title")
@@ -280,6 +285,13 @@ def main(argv=None):
     if args.cmd == "init":
         print(init_mod.init_kb(args.path))
         return 0
+
+    if args.cmd == "doctor":
+        results = doctor_mod.run()
+        for result in results:
+            if not (args.quiet and result[0]):
+                print(doctor_mod.format_line(result))
+        return 0 if all(r[0] for r in results) else 1
 
     if args.cmd == "install":
         return install_mod.install()
