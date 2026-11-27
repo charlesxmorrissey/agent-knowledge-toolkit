@@ -439,7 +439,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out.splitlines(), [
             "lesson: yaml colon broke the parser",
-            "  - [quote-yaml] Quote a YAML value that holds a colon | hits: 1 | status: candidate",
+            "  - [quote-yaml] Quote a YAML value that holds a colon | hits: 1 | status: candidate | score: 2.0",
             "lesson: zzz",
             "  no match",
         ])

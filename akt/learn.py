@@ -59,11 +59,17 @@ def compact_line(entry):
         entry["id"], rule, entry["hits"], entry["status"])
 
 
-def match_line(entry):
+def match_line(entry, score=None):
     """Match-pass format: the whole rule, no stories. A handful of lines print,
-    so the rule needs no truncation and no follow-up `show`."""
-    return "- [{}] {} | hits: {} | status: {}".format(
+    so the rule needs no truncation and no follow-up `show`.
+
+    `score` is in the unit RULE_CUTOFF uses: 1.0 is one shared word that only
+    one entry holds. Printed so real runs show what a true match scores
+    against a loose one (issue #75).
+    """
+    line = "- [{}] {} | hits: {} | status: {}".format(
         entry["id"], entry["rule"], entry["hits"], entry["status"])
+    return line if score is None else "{} | score: {:.1f}".format(line, score)
 
 
 def _ledger_file(kb_path):
@@ -256,7 +262,7 @@ def _ranked(entries, text):
     return ranked
 
 
-def match(kb_path, lesson, limit=5, status=None):
+def match_scored(kb_path, lesson, limit=5, status=None):
     """Ledger entries ranked against one lesson, best first.
 
     The scan pass used to read every candidate, and that list grows with every
@@ -267,10 +273,20 @@ def match(kb_path, lesson, limit=5, status=None):
     every rule for very little. Every status is ranked unless `status` is
     given, so a lesson that is already a graduated rule shows up as one and is
     not added again as a new candidate.
+
+    Returns (entry, score) pairs. The score is divided by the weight of a word
+    that one entry holds, so it reads the same as the ledger grows.
     """
-    found = [e for _, _, e in _ranked(read_learnings(kb_path), lesson)
+    entries = read_learnings(kb_path)
+    unit = math.log(len(entries) + 1) or 1.0
+    found = [(e, -neg / unit) for neg, _, e in _ranked(entries, lesson)
              if not status or e["status"] == status]
     return found[:limit]
+
+
+def match(kb_path, lesson, limit=5, status=None):
+    """`match_scored` without the scores."""
+    return [e for e, _ in match_scored(kb_path, lesson, limit, status)]
 
 
 def rules_for(kb_path, task, limit=3):

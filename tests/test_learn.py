@@ -16,6 +16,7 @@ from akt.learn import (
     rule_block,
     match,
     match_line,
+    match_scored,
     rules_for,
     set_load,
 )
@@ -287,6 +288,19 @@ class MatchTest(unittest.TestCase):
     def test_all_statuses_ranked_unless_one_is_named(self):
         self.assertIn("quote-yaml-values", self._ids("yaml colon"))
         self.assertEqual(self._ids("yaml colon", status="candidate"), [])
+
+    def test_score_is_in_units_of_a_word_one_entry_holds(self):
+        # "portable" is in one rule of three. Alone it scores near 1.0, moved
+        # only by the length term; a second such word about doubles it.
+        (entry, one), = match_scored(self.kb, "portable")
+        self.assertEqual(entry["id"], "sort-keys-portable")
+        self.assertTrue(0.7 < one < 1.4, one)
+        (_, two), = match_scored(self.kb, "portable keys")
+        self.assertAlmostEqual(two, 2 * one, places=5)
+
+    def test_match_line_with_score(self):
+        self.assertTrue(match_line(_entry(), 2.345).endswith(" | status: candidate | score: 2.3"))
+        self.assertNotIn("score", match_line(_entry()))
 
     def test_match_line_keeps_whole_rule_and_drops_stories(self):
         line = match_line(_entry(rule="R" * 200))

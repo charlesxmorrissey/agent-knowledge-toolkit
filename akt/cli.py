@@ -469,9 +469,9 @@ def main(argv=None):
             elif args.learn_cmd == "match":
                 for lesson in args.lesson:
                     print("lesson: {}".format(lesson))
-                    found = learn_mod.match(kb, lesson, args.limit, args.status)
-                    for entry in found:
-                        print("  " + learn_mod.match_line(entry))
+                    found = learn_mod.match_scored(kb, lesson, args.limit, args.status)
+                    for entry, score in found:
+                        print("  " + learn_mod.match_line(entry, score))
                     if not found:
                         print("  no match")
             elif args.learn_cmd == "prune":

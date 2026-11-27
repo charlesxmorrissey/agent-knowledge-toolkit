@@ -191,7 +191,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | `load <id> core\|recall`                          | Move a graduated global rule between KB `AGENTS.md` (every session) and the ledger (printed by recall on a match) |
 | `wont <id>`                                      | Mark wont-graduate; stops proposals              |
 | `list [--status STATUS] [--repo REPO] [--compact]` | Print the ledger; `--compact` = id + truncated rule (the scan-pass view) |
-| `match "<lesson>"... [--limit N] [--status STATUS]` | Rank the ledger against each lesson and print the best few (default 5) with the full rule; the learnings pass uses this, so its cost does not grow with the ledger |
+| `match "<lesson>"... [--limit N] [--status STATUS]` | Rank the ledger against each lesson and print the best few (default 5) with the full rule and a score (1.0 is one shared word that only one entry holds); the learnings pass uses this, so its cost does not grow with the ledger |
 | `show <id>`                                      | Print one entry's full ledger line               |
 | `prune`                                          | Print-only staleness report                      |
 
