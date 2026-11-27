@@ -50,7 +50,8 @@ allowed-tools: Bash, Read
    - For each lesson: if a printed entry is the same lesson — different words
      count, and so does an entry that is already graduated — run
      `akt learn reinforce <id> --story <repo>/<date>-<slug>`; if it's new, run
-     `akt learn add <kebab-id> "<rule as one instruction sentence, no '|'>" --story <repo>/<date>-<slug>`.
+     `akt learn add <kebab-id> "<rule as one instruction sentence, no '|'>" --story <repo>/<date>-<slug> --lesson "<lesson>"`,
+     where `<lesson>` is the same text you passed to `match`.
    - If any command printed a `PROPOSE:` line, relay it to the user verbatim
      and act on their answer: `akt learn graduate <id>` (for a REPO-LOCAL
      proposal, also append the printed rule block to *this* repo's

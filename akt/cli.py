@@ -219,6 +219,9 @@ def build_parser():
     la.add_argument("--id", dest="id_opt", help="alias for the positional id")
     la.add_argument("--rule", "--text", dest="rule_opt", help="alias for the positional rule")
     la.add_argument("--story", required=True, help="<repo>/<date>-<slug>")
+    la.add_argument("--lesson", default=None,
+                    help="the lesson text as it was passed to `learn match`, so `learn scores` "
+                         "knows which lesson had no match")
     la.add_argument("--date", default=None)
 
     lr = lsub.add_parser("reinforce", help="bump hits; prints PROPOSE: at threshold")
@@ -452,7 +455,11 @@ def main(argv=None):
                 entry = learn_mod.add(kb, learn_id, rule,
                                       _normalize_learn_story(args.story, kb), today)
                 print(learn_mod.build_learning_line(entry))
-                matchlog.log_action("add", learn_id)
+                if args.lesson and not matchlog.lesson_in_last_pass(args.lesson):
+                    sys.stderr.write(
+                        "note: --lesson is not a lesson from the last `akt learn match` run, so "
+                        "`akt learn scores` cannot pair it; pass the text as it was given to match\n")
+                matchlog.log_action("add", learn_id, args.lesson)
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: add {}".format(learn_id)) + "\n")
             elif args.learn_cmd == "reinforce":
                 threshold = int(config.get("learn_threshold") or 3)

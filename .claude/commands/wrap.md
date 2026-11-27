@@ -32,7 +32,8 @@ End-of-session routine. Do these in order:
    words is a match and gets
    `akt learn reinforce <id> --story <repo>/<date>-<slug>` (also when the
    entry is already graduated); a lesson with no real match gets
-   `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any
+   `akt learn add <id> "<rule>" --story <repo>/<date>-<slug> --lesson "<lesson>"`,
+   where `<lesson>` is the same text you passed to `match`. Relay any
    `PROPOSE:` line to the user verbatim and act on the answer
    (`akt learn graduate <id>` / `akt learn wont <id>`). For a GLOBAL
    proposal also ask whether the rule should load in every session: yes means
