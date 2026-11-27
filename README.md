@@ -190,7 +190,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 
 | Subcommand                                       | What it does                                     |
 | ------------------------------------------------ | ------------------------------------------------ |
-| `add <id> "<rule>" --story <repo>/<date>-<slug>` | New candidate at hits 1                          |
+| `add <id> "<rule>" --story <repo>/<date>-<slug> [--lesson "<lesson>"]` | New candidate at hits 1. `--lesson` is the text that you gave to `match`, so `scores` knows which lesson had no match |
 | `reinforce <id> --story <repo>/<date>-<slug>`    | Bump hits; prints `PROPOSE:` at threshold        |
 | `graduate <id> [--core]`                         | Promote. A global rule stays in the ledger and `akt recall` prints it when a task matches; `--core` writes it to KB `AGENTS.md` so it loads in every session |
 | `load <id> core\|recall`                          | Move a graduated global rule between KB `AGENTS.md` (every session) and the ledger (printed by recall on a match) |
@@ -206,8 +206,11 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 is in the same directory as the configuration file, outside the knowledge base, so
 `match` does not change the knowledge base. A match with `--status` is not recorded.
 `scores` reads the log. If you reinforce an id after a match printed it, that match is a
-true match. If you add a new entry after a match, that lesson had no match, and its top
-score is a loose result. You can delete the log at any time.
+true match. If two lessons in one run list the same id, the match belongs to the lesson
+with the higher score for that id. If you add a new entry with `--lesson`, the lesson
+that you name had no match, and its top score is a loose result. An add without
+`--lesson` counts only if each lesson that is left has such an add. You can delete the
+log at any time.
 
 `--story` accepts the bare `<repo>/<date>-<slug>`, the `stories/`-prefixed form that
 `recall` prints, and the `<kb-dirname>/stories/` form session notes carry. It must

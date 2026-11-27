@@ -20,7 +20,8 @@ Bootstrap or re-sweep the evidence ledger from the story corpus.
    prints the closest entries under each):
    - matches an existing entry (same lesson, any wording) →
      `akt learn reinforce <id> --story <repo>/<date>-<slug> --date <story date>`
-   - new → `akt learn add <kebab-id> "<one instruction sentence, no '|'>" --story <repo>/<date>-<slug> --date <story date>`
+   - new → `akt learn add <kebab-id> "<one instruction sentence, no '|'>" --story <repo>/<date>-<slug> --date <story date> --lesson "<lesson>"`
+     (`<lesson>` is the same text you passed to `match`)
 5. **Batch proposals:** do NOT act on `PROPOSE:` lines mid-sweep. Collect them
    and present all of them to the user at the end; then run
    `akt learn graduate <id>` or `akt learn wont <id>` per their answers.

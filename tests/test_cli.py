@@ -477,6 +477,36 @@ class CliTest(unittest.TestCase):
             "lowest true match: 2.0 | highest loose result: 0.0",
         ])
 
+    def test_learn_add_lesson_pairs_the_add_when_another_lesson_is_dropped(self):
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
+        self._run(["learn", "add", "quote-yaml", "Quote a YAML value that holds a colon",
+                   "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "match", "yaml colon broke the parser", "a dropped lesson", "zzz"])
+        self._run(["learn", "reinforce", "quote-yaml", "--story", "webapp/2026-07-01-a"])
+        err = self._run_stderr(["learn", "add", "new-one", "A lesson with no match",
+                                "--story", "webapp/2026-07-01-a", "--lesson", "zzz"])
+        self.assertNotIn("note:", err)
+        rc, out = self._run(["learn", "scores"])
+        self.assertEqual(out.splitlines(), [
+            "true matches (a result id was reinforced after the match): 1",
+            "  2.0  [quote-yaml]  yaml colon broke the parser",
+            "no match (the lesson was added as a new entry): 1",
+            "  0.0  [-]  zzz",
+            "unresolved (not reinforced, and no add names the lesson): 1",
+            "lowest true match: 2.0 | highest loose result: 0.0",
+        ])
+
+    def test_learn_add_lesson_that_was_not_matched_prints_a_note_and_still_adds(self):
+        self._run(["init", str(self.kb)])
+        self._story("webapp/2026-07-01-a")
+        self._run(["learn", "match", "zzz"])
+        err = self._run_stderr(["learn", "add", "new-one", "A lesson", "--story",
+                                "webapp/2026-07-01-a", "--lesson", "reworded"])
+        self.assertIn("note: --lesson is not a lesson from the last `akt learn match` run", err)
+        rc, out = self._run(["learn", "show", "new-one"])
+        self.assertEqual(rc, 0)
+
     def test_learn_match_with_a_status_filter_is_not_logged(self):
         self._run(["init", str(self.kb)])
         self._story("webapp/2026-07-01-a")

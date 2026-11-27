@@ -65,6 +65,59 @@ class MatchLogTest(unittest.TestCase):
         true, loose, unresolved = matchlog.outcomes(records)
         self.assertEqual((true, loose, unresolved), ([], [], 2))
 
+    def test_an_add_that_names_its_lesson_pairs_when_another_lesson_was_dropped(self):
+        records = [_match("one", ("a", 1.0)), _match("two", ("b", 2.0)),
+                   _match("three", ("c", 4.0)),
+                   {"op": "reinforce", "id": "c"},
+                   {"op": "add", "id": "new", "lesson": "  TWO "}]
+        true, loose, unresolved = matchlog.outcomes(records)
+        self.assertEqual(true, [(4.0, "c", "three")])
+        self.assertEqual(loose, [(2.0, "b", "two")])
+        self.assertEqual(unresolved, 1)
+
+    def test_named_and_unnamed_adds_in_one_pass(self):
+        records = [_match("one", ("a", 1.0)), _match("two", ("b", 2.0)),
+                   {"op": "add", "id": "n1", "lesson": "two"}, {"op": "add", "id": "n2"}]
+        true, loose, unresolved = matchlog.outcomes(records)
+        self.assertEqual(sorted(loose), [(1.0, "a", "one"), (2.0, "b", "two")])
+        self.assertEqual(unresolved, 0)
+
+    def test_a_named_add_does_not_count_toward_the_other_leftovers(self):
+        records = [_match("one", ("a", 1.0)), _match("two", ("b", 2.0)),
+                   _match("three", ("c", 3.0)),
+                   {"op": "add", "id": "n1", "lesson": "two"}, {"op": "add", "id": "n2"}]
+        true, loose, unresolved = matchlog.outcomes(records)
+        self.assertEqual(loose, [(2.0, "b", "two")])
+        self.assertEqual(unresolved, 2)
+
+    def test_a_name_that_is_no_lesson_in_the_pass_pairs_nothing(self):
+        records = [_match("one", ("a", 1.0)), _match("two", ("b", 2.0)),
+                   {"op": "add", "id": "n1", "lesson": "reworded two"}]
+        self.assertEqual(matchlog.outcomes(records), ([], [], 2))
+
+    def test_lesson_in_last_pass_reads_only_the_newest_pass(self):
+        records = [_match("old", ("a", 1.0)), {"op": "add", "id": "n"},
+                   _match("New  Lesson", ("b", 2.0))]
+        self.assertTrue(matchlog.lesson_in_last_pass("new lesson", records))
+        self.assertFalse(matchlog.lesson_in_last_pass("old", records))
+        self.assertFalse(matchlog.lesson_in_last_pass("anything", []))
+
+    def test_the_unresolved_line_covers_an_add_that_named_no_lesson(self):
+        records = [_match("one", ("a", 1.0)), _match("two", ("b", 2.0)),
+                   {"op": "add", "id": "n"}]
+        self.assertEqual(matchlog.report(records)[-1],
+                         "unresolved (not reinforced, and no add names the lesson): 2")
+
+    def test_a_reinforced_id_credits_only_the_lesson_where_it_scored_highest(self):
+        records = [_match("the real one", ("a", 4.0), ("b", 1.0)),
+                   _match("another lesson", ("c", 1.5), ("a", 0.8)),
+                   {"op": "reinforce", "id": "a"},
+                   {"op": "add", "id": "n", "lesson": "another lesson"}]
+        true, loose, unresolved = matchlog.outcomes(records)
+        self.assertEqual(true, [(4.0, "a", "the real one")])
+        self.assertEqual(loose, [(1.5, "c", "another lesson")])
+        self.assertEqual(unresolved, 0)
+
     def test_a_match_after_an_action_starts_a_new_pass(self):
         records = [
             _match("one", ("a", 3.0)),
