@@ -199,6 +199,9 @@ def build_parser():
 
     sub.add_parser("reindex", help="rebuild INDEX.md from all story.md files")
 
+    sub.add_parser(
+        "repo", help="print the current repo name: the <repo> that latest and start-story take")
+
     plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/graduate/wont/list/show/prune")
     lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
 
@@ -335,6 +338,11 @@ def main(argv=None):
         sys.stderr.write(gitkb.commit_kb(kb, "story update: {}/{}".format(sp.parent.name, sp.name)) + "\n")
         return 0
 
+    if args.cmd == "repo":
+        # Outside a git repo the directory name is the only name there is.
+        print((gitkb.repo_root() or Path.cwd()).name)
+        return 0
+
     if args.cmd == "recall":
         kb = _require_kb()
         _warn_if_dirty(kb)
@@ -377,7 +385,10 @@ def main(argv=None):
         main_rel = rel_to_kb(kb, sp)
         d = _require_iso_date(args.date or _date.today().isoformat())
         repos = [r.strip() for r in args.repos.split(",") if r.strip()]
-        root = Path.cwd().parent  # siblings sit beside the current repo
+        # Siblings sit beside the current repo. From the main checkout, not
+        # from cwd: in a worktree or a subdirectory cwd's parent is not where
+        # the sibling repos are (issue #73).
+        root = (gitkb.repo_root() or Path.cwd()).parent
         rows = drift_mod.drift(kb, main_rel, repos, root)
         for row in rows:
             _print_drift_row(row, root)

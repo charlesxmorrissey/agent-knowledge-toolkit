@@ -12,7 +12,7 @@ Start-of-session routine. Do these in order:
    `gh issue list --state open --limit 20` and list anything open (number, title,
    author, age). Skip silently if there is no GitHub remote or `gh` fails — this is
    a surface-it step, not a blocker.
-3. **Recall**: run `akt latest <repo>` (`<repo>` = basename of the repo root) —
+3. **Recall**: run `akt latest <repo>` (`<repo>` = the output of `akt repo`) —
    it prints the most recently active story path with its summary. Read that
    story (resolve against `knowledge_base_path` in `~/.claude/akt-config.md`).
    Its final section (the last `## Update`, or the newest `sessions/NN.md`

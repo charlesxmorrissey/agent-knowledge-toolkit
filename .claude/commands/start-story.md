@@ -5,7 +5,8 @@ allowed-tools: Bash
 
 # Start Story
 
-1. Determine the current repo name (the basename of the repo root) and a short title for the task.
+1. Run `akt repo` for the current repo name (in a git worktree it prints the name of the main
+   checkout, not of the worktree directory) and choose a short title for the task.
 2. Run:
    ```bash
    akt start-story <repo> "<short title>" [--keys a,b,c]

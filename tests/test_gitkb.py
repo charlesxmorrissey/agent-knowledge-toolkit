@@ -59,3 +59,43 @@ class GitkbTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RepoRootTest(unittest.TestCase):
+    """issue #73: the repo name and the sibling root came from the worktree."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.main = Path(self.tmp.name).resolve() / "webapp"
+        self.main.mkdir()
+        _run("git", "init", "-q", cwd=self.main)
+        _run("git", "config", "user.email", "t@t.test", cwd=self.main)
+        _run("git", "config", "user.name", "t", cwd=self.main)
+        _run("git", "commit", "-q", "--allow-empty", "-m", "init", cwd=self.main)
+        self.wt = self.main / ".claude" / "worktrees" / "fix-foo"
+        _run("git", "worktree", "add", "-q", str(self.wt), "-b", "fix-foo", cwd=self.main)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_main_checkout(self):
+        self.assertEqual(gitkb.repo_root(self.main), self.main)
+
+    def test_subdirectory_of_main_checkout(self):
+        sub = self.main / "src" / "deep"
+        sub.mkdir(parents=True)
+        self.assertEqual(gitkb.repo_root(sub), self.main)
+
+    def test_worktree_names_the_main_checkout(self):
+        self.assertEqual(gitkb.repo_root(self.wt), self.main)
+        self.assertEqual(gitkb.repo_root(self.wt).name, "webapp")
+
+    def test_subdirectory_of_worktree(self):
+        sub = self.wt / "src"
+        sub.mkdir()
+        self.assertEqual(gitkb.repo_root(sub), self.main)
+
+    def test_outside_a_repo_is_none(self):
+        plain = Path(self.tmp.name).resolve() / "plain"
+        plain.mkdir()
+        self.assertIsNone(gitkb.repo_root(plain))
