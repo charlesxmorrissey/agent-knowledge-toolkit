@@ -210,6 +210,41 @@ class DriftCliTest(unittest.TestCase):
         self.assertIn("2026-11-01", lines[2])
         self.assertEqual(lines[3], "ghost: no story, no repo at ../ghost")
 
+    def _worktree(self):
+        """Make webapp a git repo with a linked worktree, and return its path."""
+        webapp = self.repos / "webapp"
+        _init_repo(webapp)
+        _git(webapp, "commit", "-q", "--allow-empty", "-m", "init")
+        wt = webapp / ".claude" / "worktrees" / "fix-foo"
+        _git(webapp, "worktree", "add", "-q", str(wt), "-b", "fix-foo")
+        return wt
+
+    def test_drift_from_a_worktree_still_finds_the_sibling_repo(self):
+        # issue #73: cwd's parent is the worktrees folder, so the sibling
+        # repo was not found and the git-head line came back empty.
+        os.chdir(self._worktree())
+        rc, out = self._run(["drift", self.main, "--repos", "components"])
+        self.assertEqual(rc, 0)
+        self.assertIn("checkout: PR 23 merged", out)
+        self.assertNotIn("no repo", out)
+
+    def test_drift_from_a_subdirectory_still_finds_the_sibling_repo(self):
+        _init_repo(self.repos / "webapp")
+        sub = self.repos / "webapp" / "src"
+        sub.mkdir()
+        os.chdir(sub)
+        rc, out = self._run(["drift", self.main, "--repos", "components"])
+        self.assertIn("checkout: PR 23 merged", out)
+
+    def test_repo_prints_the_main_checkout_name_in_a_worktree(self):
+        os.chdir(self._worktree())
+        rc, out = self._run(["repo"])
+        self.assertEqual((rc, out.strip()), (0, "webapp"))
+
+    def test_repo_outside_git_prints_the_directory_name(self):
+        rc, out = self._run(["repo"])  # setUp left cwd in a plain directory
+        self.assertEqual((rc, out.strip()), (0, "webapp"))
+
     def test_drift_without_pointer_writes_nothing(self):
         before = (self.kb / "stories/components/2026-10-28-checkout-build/story.md").read_text()
         self._run(["drift", self.main, "--repos", "components"])

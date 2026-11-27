@@ -27,6 +27,27 @@ def is_repo(kb):
     return ok and out == "true"
 
 
+def repo_root(path="."):
+    """The main checkout that `path` belongs to, or None outside a git repo.
+
+    `git rev-parse --show-toplevel` names the worktree directory when run in a
+    linked worktree, so a worktree at .claude/worktrees/fix-foo was taken for
+    a repo called fix-foo (issue #73). The common git dir is shared by every
+    worktree: its parent is the main checkout. When the common dir is not
+    named `.git` (a submodule, a bare repo) there is no such parent, so the
+    toplevel is the best answer.
+    """
+    base = Path(path).resolve()
+    ok, common = _git(base, "rev-parse", "--git-common-dir")
+    if not ok or not common:
+        return None
+    common_dir = (base / common).resolve()  # relative to `path` on older git
+    if common_dir.name == ".git":
+        return common_dir.parent
+    ok, top = _git(base, "rev-parse", "--show-toplevel")
+    return Path(top).resolve() if ok and top else None
+
+
 def is_dirty(kb):
     if not is_repo(kb):
         return False

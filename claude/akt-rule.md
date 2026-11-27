@@ -17,7 +17,7 @@ Skip recall for trivial work (typo fixes, one-liners, pure questions).
 
 Capture it so the decision is recorded for next time:
 
-1. If a story isn't already open, run `akt start-story <repo> "<short title>"` (`<repo>` = basename of the repo root).
+1. If a story isn't already open, run `akt start-story <repo> "<short title>"` (`<repo>` = the output of `akt repo`, which is the name of the main checkout even inside a git worktree).
 2. Distill the work into `story.md` and index it via `akt finish-story <story_path> --stdin --summary "<one line: key decision + because>" --keys a,b,c` (body on stdin, summary and keys on the flags — one call), including the **key decision → because → rejected alternative**. The finish-story flow commits (and pushes, if a remote is set) the knowledge base.
 3. Learnings pass: run `akt learn match "<lesson>" "<lesson>"` with one quoted argument per transferable lesson from this story — it prints the closest ledger entries under each lesson. The same lesson in different words is a match and gets `akt learn reinforce <id> --story <repo>/<date>-<slug>` (also when the entry is already graduated); a lesson with no real match gets `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any `PROPOSE:` line to the user verbatim and act on their answer (`akt learn graduate <id>` / `akt learn wont <id>`). For a GLOBAL proposal also ask whether the rule should load in every session: yes means `akt learn graduate <id> --core`, and it is for rules that apply in any repo or guard an action that is hard to undo; without `--core`, `akt recall` prints the rule when a task matches. A REPO-LOCAL graduation also means appending the printed rule block to this repo's `AGENTS.md`/`CLAUDE.md` and committing it with the work.
 
