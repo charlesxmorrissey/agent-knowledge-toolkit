@@ -198,6 +198,14 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | `match "<lesson>"... [--limit N] [--status STATUS]` | Rank the ledger against each lesson and print the best few (default 5) with the full rule and a score (1.0 is one shared word that only one entry holds); the learnings pass uses this, so its cost does not grow with the ledger |
 | `show <id>`                                      | Print one entry's full ledger line               |
 | `prune`                                          | Print-only staleness report                      |
+| `scores`                                         | Print the match scores from past runs: the score of each true match, and the top score of each lesson that had none |
+
+`match`, `reinforce` and `add` each append one line to `akt-match-log.jsonl`. The file
+is in the same directory as the configuration file, outside the knowledge base, so
+`match` does not change the knowledge base. A match with `--status` is not recorded.
+`scores` reads the log. If you reinforce an id after a match printed it, that match is a
+true match. If you add a new entry after a match, that lesson had no match, and its top
+score is a loose result. You can delete the log at any time.
 
 `--story` accepts the bare `<repo>/<date>-<slug>`, the `stories/`-prefixed form that
 `recall` prints, and the `<kb-dirname>/stories/` form session notes carry. It must
@@ -330,7 +338,8 @@ workflow toolkit" layer for this; the ecosystem filled it, so that layer is reti
 **Next:**
 
 1. **Ledger upkeep** — `learn merge` for candidates that are the same lesson (#80), and a
-   score cutoff so `learn match` prints `no match` for a lesson with none (#75).
+   score cutoff so `learn match` prints `no match` for a lesson with none (#75). `learn
+   scores` collects the data for that cutoff.
 2. **`akt doctor`** — one command that checks the install and the knowledge base (#81).
 3. **Distribution** (deferred) — a Claude Code plugin for public distribution (`akt install`
    covers single-user setup; the plugin is the answer for versioned, multi-user installs).
