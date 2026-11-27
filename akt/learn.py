@@ -239,6 +239,75 @@ def set_load(kb_path, learn_id, where):
     return entry, found
 
 
+def _set_rule_hits(kb_path, learn_id, hits):
+    """Bring the hit count in a core rule's AGENTS.md comment in line. True
+    when a comment with a count was found. Only the number changes, so a
+    hand-trimmed provenance list stays as it is."""
+    agents = Path(kb_path) / AGENTS_FILE
+    if not agents.exists():
+        return False
+    pattern = re.compile(r"(<!--\s*akt:\s*{}\s*\|\s*)\d+( hits)".format(re.escape(learn_id)))
+    text, count = pattern.subn(r"\g<1>{}\g<2>".format(hits), agents.read_text(), count=1)
+    if count:
+        agents.write_text(text)
+    return bool(count)
+
+
+def merge(kb_path, keep_id, drop_id, threshold, rule=None):
+    """Fold `drop_id` into `keep_id`: two entries that are one lesson (issue #80).
+
+    Counted apart, two wordings of one lesson sit at one hit each and never
+    reach the threshold. The kept entry gets both story lists, and the dropped
+    entry leaves the ledger.
+
+    Hits are the two counts added, less one for each story that both entries
+    list: a story that reinforced both is one piece of evidence. For entries
+    whose hits equal their story count this is the number of distinct stories.
+    It is not simply that number because some entries hold more hits than
+    stories (one story reinforced them twice), and a merge must not lower a
+    count.
+
+    Returns (entry, proposal, note). `note` says what the caller still has to
+    tell the user when the kept entry is a graduated rule.
+    """
+    if keep_id == drop_id:
+        raise ValueError("cannot merge '{}' into itself".format(keep_id))
+    if rule is not None and "|" in rule:
+        raise ValueError("rule text must not contain '|'")
+    entries = read_learnings(kb_path)
+    keep, drop = _find(entries, keep_id), _find(entries, drop_id)
+    if drop["status"].startswith("graduated"):
+        # Its rule text is live in a rule file; removing the entry would orphan it.
+        raise ValueError(
+            "'{}' is {}: a graduated rule cannot be the dropped entry. "
+            "Merge the other way: akt learn merge {} {}".format(
+                drop_id, drop["status"], drop_id, keep_id))
+    if rule is not None and keep["status"].startswith("graduated"):
+        raise ValueError(
+            "'{}' is {}: its rule text is already in a rule file, so --rule "
+            "cannot replace it".format(keep_id, keep["status"]))
+    shared = set(keep["stories"]) & set(drop["stories"])
+    keep["hits"] = keep["hits"] + drop["hits"] - len(shared)
+    keep["stories"] += [s for s in drop["stories"] if s not in keep["stories"]]
+    keep["last"] = max(keep["last"], drop["last"])
+    if rule is not None:
+        keep["rule"] = rule
+    entries.remove(drop)
+    write_learnings(kb_path, entries)
+    note = None
+    if keep["status"] == "graduated-global":
+        note = "(core: the hit count in the knowledge base AGENTS.md is now {})".format(
+            keep["hits"]) if _set_rule_hits(kb_path, keep_id, keep["hits"]) else \
+            "(core: no comment for this id was in the knowledge base AGENTS.md, " \
+            "so only the ledger changed)"
+    elif keep["status"] == "graduated-repo":
+        note = "(repo-local: the comment in that repo's AGENTS.md/CLAUDE.md still " \
+               "shows the old hit count)"
+    proposal = _proposal(keep) \
+        if keep["status"] == "candidate" and keep["hits"] >= threshold else None
+    return keep, proposal, note
+
+
 def wont(kb_path, learn_id):
     entries = read_learnings(kb_path)
     entry = _find(entries, learn_id)

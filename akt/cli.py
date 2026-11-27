@@ -208,7 +208,7 @@ def build_parser():
     sub.add_parser(
         "repo", help="print the current repo name: the <repo> that latest and start-story take")
 
-    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/match/graduate/load/wont/list/show/prune/scores")
+    plearn = sub.add_parser("learn", help="evidence ledger: add/reinforce/match/merge/graduate/load/wont/list/show/prune/scores")
     lsub = plearn.add_subparsers(dest="learn_cmd", required=True)
 
     la = lsub.add_parser("add", help="new candidate at hits 1")
@@ -236,6 +236,13 @@ def build_parser():
         "load", help="move a graduated global rule: core (every session) or recall (on a match)")
     lload.add_argument("id")
     lload.add_argument("where", choices=("core", "recall"))
+
+    lmerge = lsub.add_parser(
+        "merge", help="fold one entry into another when both are the same lesson")
+    lmerge.add_argument("keep_id", metavar="keep-id")
+    lmerge.add_argument("drop_id", metavar="drop-id")
+    lmerge.add_argument("--rule", default=None,
+                        help="replace the kept rule text, for when the dropped wording was better")
 
     lw = lsub.add_parser("wont", help="mark wont-graduate; stops proposals")
     lw.add_argument("id")
@@ -479,6 +486,17 @@ def main(argv=None):
                     print("(on recall: no block for this id was in the knowledge base AGENTS.md, "
                           "so only the status changed)")
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: load {} {}".format(args.id, args.where)) + "\n")
+            elif args.learn_cmd == "merge":
+                threshold = int(config.get("learn_threshold") or 3)
+                entry, proposal, note = learn_mod.merge(
+                    kb, args.keep_id, args.drop_id, threshold, args.rule)
+                print(learn_mod.build_learning_line(entry))
+                if note:
+                    print(note)
+                if proposal:
+                    print(proposal)
+                sys.stderr.write(gitkb.commit_kb(
+                    kb, "learn: merge {} into {}".format(args.drop_id, args.keep_id)) + "\n")
             elif args.learn_cmd == "wont":
                 entry = learn_mod.wont(kb, args.id)
                 print(learn_mod.build_learning_line(entry))

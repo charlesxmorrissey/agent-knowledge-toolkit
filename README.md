@@ -194,6 +194,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | `reinforce <id> --story <repo>/<date>-<slug>`    | Bump hits; prints `PROPOSE:` at threshold        |
 | `graduate <id> [--core]`                         | Promote. A global rule stays in the ledger and `akt recall` prints it when a task matches; `--core` writes it to KB `AGENTS.md` so it loads in every session |
 | `load <id> core\|recall`                          | Move a graduated global rule between KB `AGENTS.md` (every session) and the ledger (printed by recall on a match) |
+| `merge <keep-id> <drop-id> [--rule "<text>"]`    | Fold one entry into another when the two are the same lesson. The kept entry gets the stories of the two entries, and the dropped entry leaves the ledger. A story that the two entries share counts as one hit. Prints `PROPOSE:` at threshold. A graduated rule cannot be the dropped entry. If the kept entry is a core rule, the hit count in KB `AGENTS.md` changes too |
 | `wont <id>`                                      | Mark wont-graduate; stops proposals              |
 | `list [--status STATUS] [--repo REPO] [--compact]` | Print the ledger; `--compact` = id + truncated rule (the scan-pass view) |
 | `match "<lesson>"... [--limit N] [--status STATUS]` | Rank the ledger against each lesson and print the best few (default 5) with the full rule and a score (1.0 is one shared word that only one entry holds); the learnings pass uses this, so its cost does not grow with the ledger |
@@ -338,9 +339,8 @@ workflow toolkit" layer for this; the ecosystem filled it, so that layer is reti
 
 **Next:**
 
-1. **Ledger upkeep** — `learn merge` for candidates that are the same lesson (#80), and a
-   score cutoff so `learn match` prints `no match` for a lesson with none (#75). `learn
-   scores` collects the data for that cutoff.
+1. **Ledger upkeep** — a score cutoff so `learn match` prints `no match` for a lesson with
+   none (#75). `learn scores` collects the data for that cutoff.
 2. **Distribution** (deferred) — a Claude Code plugin for public distribution (`akt install`
    covers single-user setup; the plugin is the answer for versioned, multi-user installs).
 
