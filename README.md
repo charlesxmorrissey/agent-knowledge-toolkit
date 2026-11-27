@@ -173,6 +173,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | Command                                                 | What it does                                                                                                                                                     |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `install`                                               | Symlink the launcher, slash commands, and auto-recall rule into `~/.local/bin` and `~/.claude` (idempotent; never clobbers real files)                           |
+| `doctor [--quiet]`                                      | Make sure that the install and the knowledge base are healthy. It prints one line for each item, `ok` or `FAIL` with the command that fixes the problem. It changes nothing, and it exits 1 if an item fails. `--quiet` prints only the failed items. The items are: the configuration file, the install symlinks, the branch of the toolkit repo, the imports in the global `CLAUDE.md`, uncommitted and unpushed knowledge base changes, loose git objects above 50 MB, the index, the ledger, and the size of `AGENTS.md` |
 | `init <path>`                                           | Create a knowledge base at `<path>`, add `.obsidian/` to its `.gitignore`, and record it in config                                                              |
 | `start-story <repo> "<title>" [--date YYYY-MM-DD] [--keys a,b,c]` | Scaffold a story dir with `story.md` (keys seeded if given); prints the KB-relative path. `sessions/` appears on the first `end-session`. A title with no ASCII letters or digits slugs to `title-<8-hex hash>` |
 | `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin; the first is `01.md`) and commit the knowledge base (pushing if a remote exists) — same atomic step as `finish-story` |
@@ -340,8 +341,7 @@ workflow toolkit" layer for this; the ecosystem filled it, so that layer is reti
 1. **Ledger upkeep** — `learn merge` for candidates that are the same lesson (#80), and a
    score cutoff so `learn match` prints `no match` for a lesson with none (#75). `learn
    scores` collects the data for that cutoff.
-2. **`akt doctor`** — one command that checks the install and the knowledge base (#81).
-3. **Distribution** (deferred) — a Claude Code plugin for public distribution (`akt install`
+2. **Distribution** (deferred) — a Claude Code plugin for public distribution (`akt install`
    covers single-user setup; the plugin is the answer for versioned, multi-user installs).
 
 Design specs and implementation plans live in [`docs/superpowers/`](docs/superpowers/).

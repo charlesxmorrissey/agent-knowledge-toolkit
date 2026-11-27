@@ -8,6 +8,10 @@ allowed-tools: Bash
 Start-of-session routine. Do these in order:
 
 1. **Repo state**: `git log --oneline -5` and `git status --short`.
+   Also run `akt doctor --quiet`. It prints nothing when the install and the
+   knowledge base are healthy. If it prints a `FAIL` line, report the line with its
+   fix command, and do not run the fix without a yes. Skip silently if `akt` is
+   not on `PATH`.
 2. **Open issues**: if the repo has a GitHub remote and `gh` is authenticated, run
    `gh issue list --state open --limit 20` and list anything open (number, title,
    author, age). Skip silently if there is no GitHub remote or `gh` fails — this is
