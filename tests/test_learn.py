@@ -187,9 +187,15 @@ class MatchTest(unittest.TestCase):
         self.assertEqual(self._ids("the parser choked on a colon in a YAML value")[0],
                          "quote-yaml-values")
 
-    def test_word_in_every_rule_scores_nothing(self):
-        # "item" is in all three rules, so it cannot tell them apart.
-        self.assertEqual(self._ids("item"), [])
+    def test_word_in_every_rule_counts_least(self):
+        # "item" is in all three rules and "colon" in one, so "colon" decides.
+        self.assertEqual(self._ids("item colon")[0], "quote-yaml-values")
+        self.assertEqual(len(self._ids("item")), 3)
+
+    def test_single_entry_ledger_can_match(self):
+        # issue #76: with log(N / df) every word of a one-entry ledger scored 0.
+        write_learnings(self.kb, [_entry(id="only", rule="Quote a YAML value")])
+        self.assertEqual(self._ids("quote the yaml value"), ["only"])
 
     def test_id_words_count(self):
         self.assertEqual(self._ids("portable"), ["sort-keys-portable"])

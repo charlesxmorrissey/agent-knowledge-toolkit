@@ -28,6 +28,34 @@ class RecallTest(unittest.TestCase):
         results = recall(self.kb, "how do I handle token auth", limit=3)
         self.assertEqual(results[0]["slug"], "auth-token-refresh")
 
+    def test_recall_rare_word_outranks_many_common_words(self):
+        # issue #76: plain overlap let a long summary win on common words.
+        # Six query words are in 21 of 24 stories; "csv" is in one.
+        for n in range(20):
+            self._add("docs", "note-{}".format(n), "how do I handle the thing in a page", "page")
+        self._add("docs", "long", "how do I handle the thing in a page with a form", "form")
+        results = recall(self.kb, "how do I handle the csv thing", limit=1)
+        self.assertEqual(results[0]["slug"], "csv-export")
+
+    def test_recall_short_story_outranks_long_one_on_the_same_word(self):
+        # issue #76: a long summary holds more words of every kind.
+        self._add("docs", "short", "Rotate the signing key", "key")
+        self._add("docs", "long", "Rotate the signing key " + " ".join(
+            "filler{}".format(n) for n in range(40)), "key")
+        self.assertEqual(recall(self.kb, "signing key", limit=1)[0]["slug"], "short")
+
+    def test_recall_empty_index_returns_nothing(self):
+        kb = Path(self.tmp.name) / "empty"
+        kb.mkdir()
+        self.assertEqual(recall(kb, "anything"), [])
+
+    def test_recall_single_story_index_can_match(self):
+        kb = Path(self.tmp.name) / "one"
+        kb.mkdir()
+        meta = {"repo": "webapp", "slug": "only", "summary": "Lazy token refresh", "keys": "auth"}
+        append_index_line(kb, build_index_line(meta, "stories/webapp/2026-06-05-only/story.md"))
+        self.assertEqual([r["slug"] for r in recall(kb, "token refresh")], ["only"])
+
     def test_recall_excludes_zero_score(self):
         results = recall(self.kb, "token auth", limit=5)
         slugs = [r["slug"] for r in results]

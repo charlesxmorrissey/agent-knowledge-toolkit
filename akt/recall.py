@@ -1,8 +1,8 @@
 """Recall: rank INDEX.md entries against a free-text query.
 
 This is the single seam behind which retrieval lives: query -> ranked story paths.
-Today it is keyword overlap; it can later become vector search without changing
-callers or artifacts.
+Today it is shared keywords weighted by rarity (akt.rank); it can later become
+vector search without changing callers or artifacts.
 """
 import re
 from pathlib import Path
@@ -10,13 +10,7 @@ from pathlib import Path
 from akt.frontmatter import parse_frontmatter, split_keys
 from akt.index import read_index_lines, parse_index_line
 from akt.paths import rel_to_kb
-
-_TOKEN = re.compile(r"[a-z0-9]+")
-
-
-def tokenize(text):
-    return _TOKEN.findall(text.lower())
-
+from akt.rank import scores, tokenize  # noqa: F401 (tokenize re-exported)
 
 def _haystack(entry):
     tokens = set(tokenize(entry["summary"]))
@@ -25,11 +19,6 @@ def _haystack(entry):
     for key in entry["keys"]:
         tokens |= set(tokenize(key))
     return tokens
-
-
-def score(query_tokens, entry):
-    hay = _haystack(entry)
-    return sum(1 for qt in set(query_tokens) if qt in hay)
 
 
 def latest(kb_path, repo):
@@ -112,14 +101,11 @@ def digest(kb_path, since):
 
 
 def recall(kb_path, query, limit=3):
-    qtokens = tokenize(query)
-    scored = []
-    for line in read_index_lines(kb_path):
-        entry = parse_index_line(line)
-        if not entry:
-            continue
-        s = score(qtokens, entry)
-        if s > 0:
-            scored.append((s, entry))
-    scored.sort(key=lambda pair: (-pair[0], pair[1]["path"]))
-    return [entry for _, entry in scored[:limit]]
+    entries = [e for e in (parse_index_line(ln) for ln in read_index_lines(kb_path)) if e]
+    ranked = [
+        (s, entry)
+        for s, entry in zip(scores(query, [_haystack(e) for e in entries]), entries)
+        if s > 0
+    ]
+    ranked.sort(key=lambda pair: (-pair[0], pair[1]["path"]))
+    return [entry for _, entry in ranked[:limit]]

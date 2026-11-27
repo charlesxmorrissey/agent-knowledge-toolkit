@@ -34,7 +34,8 @@ out for. AKT makes capturing that nearly free, and — more importantly — make
   regenerated from the stories — never hand-edited. It's what makes recall fast and
   is safe to delete and rebuild.
 - **Recall is a seam.** Given a task description, recall returns the most relevant
-  story paths. Today that's keyword scoring over `INDEX.md`; it can be swapped for
+  story paths. Today that's keyword scoring over `INDEX.md` (a shared word counts for
+  more the fewer stories hold it, and a long summary is marked down); it can be swapped for
   embeddings later **without changing any stored artifact**.
 - **Capture is a byproduct.** You don't hand-write knowledge. The lifecycle commands
   prompt the agent to record the handoff/decision at the moment it already has the
