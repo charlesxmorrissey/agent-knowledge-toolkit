@@ -333,6 +333,11 @@ python3 -m unittest discover -s tests
 - `akt repo` — the repo name for `latest` and `start-story`, correct inside a git
   worktree. `latest` ranks by knowledge base commit time, so a second machine with a
   fresh clone resumes from the same story.
+- `akt doctor` — one read-only command that makes sure that the install and the knowledge
+  base are healthy, with the fix command for each problem. `/resume` runs it at the start
+  of a session.
+- Ledger upkeep: `learn merge` folds two entries that are the same lesson into one, and
+  `learn scores` keeps the `learn match` scores from real runs as data for a score cutoff.
 
 **Works with your existing workflow.** AKT deliberately ships no planner, PR tool,
 or review flow. Anything you already use — Superpowers, a Workflow script, your own
