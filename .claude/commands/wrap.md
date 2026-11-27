@@ -34,7 +34,11 @@ End-of-session routine. Do these in order:
    entry is already graduated); a lesson with no real match gets
    `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any
    `PROPOSE:` line to the user verbatim and act on the answer
-   (`akt learn graduate <id>` / `akt learn wont <id>`); a REPO-LOCAL
+   (`akt learn graduate <id>` / `akt learn wont <id>`). For a GLOBAL
+   proposal also ask whether the rule should load in every session: yes means
+   `akt learn graduate <id> --core`, for a rule that applies in any repo or
+   guards an action that is hard to undo; without `--core`, `akt recall`
+   prints the rule when a task matches. A REPO-LOCAL
    graduation also appends the printed rule block to this repo's
    AGENTS.md/CLAUDE.md, committed with the work.
 3. **Repo extras**: if this repo's CLAUDE.md or AGENTS.md has a

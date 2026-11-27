@@ -3,6 +3,7 @@
 Source of truth (NOT derived): hits and statuses can't be rebuilt from
 stories. One parseable line per candidate, in the index.py idiom.
 """
+import math
 import re
 from datetime import date as _date, timedelta
 from pathlib import Path
@@ -16,7 +17,18 @@ _LINE = re.compile(
     r" \| last: (\d{4}-\d{2}-\d{2}) \| stories: (.*)$"
 )
 
-STATUSES = ("candidate", "graduated-global", "graduated-repo", "wont-graduate")
+# Two global statuses (issue #77). `graduated-global` is a core rule: its block
+# is in the KB AGENTS.md and loads in every session. `graduated-recall` is a
+# rule that stays in this ledger and is printed by `akt recall` when a task
+# matches it, so the always-loaded file does not grow with every narrow rule.
+STATUSES = ("candidate", "graduated-global", "graduated-recall", "graduated-repo",
+            "wont-graduate")
+
+# A rule is printed by recall when its score is above this many times the
+# weight of a word that only one entry holds. On a real ledger of 571 entries,
+# 9 task lines with a known rule scored 1.7 to 3.4 times that weight and 8
+# task lines with none scored 0.1 to 1.3.
+RULE_CUTOFF = 1.5
 
 
 def build_learning_line(entry):
@@ -123,8 +135,11 @@ def _proposal(entry):
     where = "GLOBAL ({} hits across {} repos)".format(entry["hits"], len(repos)) \
         if sc == "global" else \
         "REPO-LOCAL to '{}' ({} hits in one repo)".format(next(iter(repos)), entry["hits"])
-    return "PROPOSE: graduate '{}' as {} — run: akt learn graduate {}".format(
+    line = "PROPOSE: graduate '{}' as {} — run: akt learn graduate {}".format(
         entry["id"], where, entry["id"])
+    if sc == "global":
+        line += " (add --core to load it in every session; without it, recall prints it when a task matches)"
+    return line
 
 
 def reinforce(kb_path, learn_id, story, today, threshold):
@@ -140,21 +155,82 @@ def reinforce(kb_path, learn_id, story, today, threshold):
     return entry, proposal
 
 
-def graduate(kb_path, learn_id):
+def _append_rule(kb_path, block):
+    agents = Path(kb_path) / AGENTS_FILE
+    existing = agents.read_text() if agents.exists() else ""
+    prefix = existing.rstrip("\n") + "\n\n" if existing.strip() else ""
+    agents.write_text(prefix + block + "\n")
+
+
+def _remove_rule(kb_path, learn_id):
+    """Take a rule block out of AGENTS.md. True when a block was found.
+
+    The block is found by its `<!-- akt: <id> ` comment, which survives a
+    hand-trimmed provenance list. The rule line above it goes with it.
+    """
+    agents = Path(kb_path) / AGENTS_FILE
+    if not agents.exists():
+        return False
+    lines = agents.read_text().split("\n")
+    marker = re.compile(r"<!--\s*akt:\s*{}\s*(\||-->)".format(re.escape(learn_id)))
+    for i, line in enumerate(lines):
+        if marker.search(line):
+            start = i - 1 if i > 0 and lines[i - 1].startswith("- ") else i
+            end = i + 1
+            # One blank line separates blocks; take the one after this block.
+            if end < len(lines) and not lines[end].strip() and start > 0:
+                end += 1
+            del lines[start:end]
+            agents.write_text("\n".join(lines).rstrip("\n") + "\n")
+            return True
+    return False
+
+
+def graduate(kb_path, learn_id, core=False):
+    """Promote a candidate. Global scope: `core` writes the rule block to the
+    KB AGENTS.md (loads in every session); without it the rule stays in the
+    ledger and `akt recall` prints it when a task matches. Repo scope ignores
+    `core`: the caller appends the block to that repo's own rule file."""
     entries = read_learnings(kb_path)
     entry = _find(entries, learn_id)
     if entry["status"] != "candidate":
         raise ValueError("'{}' is already {}".format(learn_id, entry["status"]))
-    sc = scope(entry)
-    entry["status"] = "graduated-global" if sc == "global" else "graduated-repo"
+    if scope(entry) == "repo":
+        entry["status"] = "graduated-repo"
+    else:
+        entry["status"] = "graduated-global" if core else "graduated-recall"
     block = rule_block(entry)
     write_learnings(kb_path, entries)
-    if sc == "global":
-        agents = Path(kb_path) / AGENTS_FILE
-        existing = agents.read_text() if agents.exists() else ""
-        prefix = existing.rstrip("\n") + "\n\n" if existing.strip() else ""
-        agents.write_text(prefix + block + "\n")
+    if entry["status"] == "graduated-global":
+        _append_rule(kb_path, block)
     return entry, block
+
+
+def set_load(kb_path, learn_id, where):
+    """Move a graduated global rule between `core` (AGENTS.md, every session)
+    and `recall` (ledger only, printed by recall on a match).
+
+    Returns (entry, found): `found` is False when moving to `recall` and
+    AGENTS.md held no block for the id. The status still changes then, so a
+    block removed by hand can be brought in line with one command.
+    """
+    entries = read_learnings(kb_path)
+    entry = _find(entries, learn_id)
+    want = {"core": "graduated-global", "recall": "graduated-recall"}[where]
+    if entry["status"] not in ("graduated-global", "graduated-recall"):
+        raise ValueError("'{}' is {}; only a graduated global rule can move".format(
+            learn_id, entry["status"]))
+    if entry["status"] == want:
+        raise ValueError("'{}' is already {}".format(learn_id, want))
+    entry["status"] = want
+    found = True
+    if where == "core":
+        _remove_rule(kb_path, learn_id)  # never two blocks for one id
+        _append_rule(kb_path, rule_block(entry))
+    else:
+        found = _remove_rule(kb_path, learn_id)
+    write_learnings(kb_path, entries)
+    return entry, found
 
 
 def wont(kb_path, learn_id):
@@ -169,6 +245,17 @@ def _tokens(entry):
     return set(tokenize(entry["rule"])) | set(tokenize(entry["id"]))
 
 
+def _ranked(entries, text):
+    """(-score, position, entry) for every entry that shares a word, best first."""
+    ranked = [
+        (-s, pos, entry)
+        for pos, (s, entry) in enumerate(zip(scores(text, [_tokens(e) for e in entries]), entries))
+        if s > 0
+    ]
+    ranked.sort(key=lambda t: t[:2])
+    return ranked
+
+
 def match(kb_path, lesson, limit=5, status=None):
     """Ledger entries ranked against one lesson, best first.
 
@@ -181,14 +268,23 @@ def match(kb_path, lesson, limit=5, status=None):
     given, so a lesson that is already a graduated rule shows up as one and is
     not added again as a new candidate.
     """
+    found = [e for _, _, e in _ranked(read_learnings(kb_path), lesson)
+             if not status or e["status"] == status]
+    return found[:limit]
+
+
+def rules_for(kb_path, task, limit=3):
+    """`graduated-recall` rules that match a task description, best first.
+
+    Scored against the whole ledger so a word's weight does not depend on how
+    many rules happen to be on recall. Unlike `match`, a loose result is
+    dropped (RULE_CUTOFF): a rule printed here reads as an instruction, so a
+    wrong one costs more than a missing line.
+    """
     entries = read_learnings(kb_path)
-    ranked = [
-        (-s, pos, entry)
-        for pos, (s, entry) in enumerate(zip(scores(lesson, [_tokens(e) for e in entries]), entries))
-        if s > 0 and (not status or entry["status"] == status)
-    ]
-    ranked.sort(key=lambda t: t[:2])
-    return [entry for _, _, entry in ranked[:limit]]
+    floor = RULE_CUTOFF * math.log(len(entries) + 1)
+    return [e for neg, _, e in _ranked(entries, task)
+            if e["status"] == "graduated-recall" and -neg >= floor][:limit]
 
 
 def prune_report(kb_path, today, cutoff_days):

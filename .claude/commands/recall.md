@@ -12,7 +12,9 @@ Given the task you are about to start, surface relevant prior decisions.
    akt recall "<one-line description of the task>"
    ```
    It prints up to 3 story paths (relative to the knowledge base), each with its
-   summary line indented beneath it. (For "pick up where we left off" with no real
+   summary line indented beneath it. It can end with a `rules that match this
+   task` block: graduated rules that are not loaded in every session. Follow
+   each one that applies. (For "pick up where we left off" with no real
    query, use `akt latest <repo>` instead.)
 2. Use the summaries to drop clearly irrelevant matches for free. Resolve the rest
    against `knowledge_base_path` (from `~/.claude/akt-config.md`) and Read the `story.md`.

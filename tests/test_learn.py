@@ -16,6 +16,8 @@ from akt.learn import (
     rule_block,
     match,
     match_line,
+    rules_for,
+    set_load,
 )
 
 
@@ -122,12 +124,86 @@ class LedgerOpsTest(unittest.TestCase):
     def test_graduate_global_appends_to_agents_md(self):
         add(self.kb, "l", "Rule text", "webapp/2026-07-01-a", "2026-07-01")
         reinforce(self.kb, "l", "shop/2026-07-02-b", "2026-07-02", 3)
-        e, block = graduate(self.kb, "l")
+        e, block = graduate(self.kb, "l", core=True)
         self.assertEqual(e["status"], "graduated-global")
         agents = (self.kb / "AGENTS.md").read_text()
         self.assertIn("- Rule text", agents)
         self.assertIn("<!-- akt: l | 2 hits | webapp/2026-07-01-a, shop/2026-07-02-b -->", agents)
         self.assertEqual(block, rule_block(e))
+
+    def test_graduate_global_without_core_stays_in_the_ledger(self):
+        # issue #77: the always-loaded file must not grow with every rule.
+        add(self.kb, "l", "Rule text", "webapp/2026-07-01-a", "2026-07-01")
+        reinforce(self.kb, "l", "shop/2026-07-02-b", "2026-07-02", 3)
+        e, block = graduate(self.kb, "l")
+        self.assertEqual(e["status"], "graduated-recall")
+        self.assertFalse((self.kb / "AGENTS.md").exists())
+        self.assertIn("- Rule text", block)
+
+    def test_graduate_repo_local_ignores_core(self):
+        add(self.kb, "l", "Rule text", "webapp/2026-07-01-a", "2026-07-01")
+        e, _ = graduate(self.kb, "l", core=True)
+        self.assertEqual(e["status"], "graduated-repo")
+        self.assertFalse((self.kb / "AGENTS.md").exists())
+
+    def _two_core_rules(self):
+        for lid in ("first", "second"):
+            add(self.kb, lid, "Rule {}".format(lid), "webapp/2026-07-01-a", "2026-07-01")
+            reinforce(self.kb, lid, "shop/2026-07-02-b", "2026-07-02", 3)
+            graduate(self.kb, lid, core=True)
+        return self.kb / "AGENTS.md"
+
+    def test_load_recall_removes_only_that_block(self):
+        agents = self._two_core_rules()
+        e, found = set_load(self.kb, "first", "recall")
+        self.assertTrue(found)
+        self.assertEqual(e["status"], "graduated-recall")
+        text = agents.read_text()
+        self.assertNotIn("Rule first", text)
+        self.assertNotIn("akt: first", text)
+        self.assertIn("- Rule second\n  <!-- akt: second | 2 hits", text)
+        self.assertNotIn("\n\n\n", text)
+
+    def test_load_recall_finds_a_hand_trimmed_comment(self):
+        agents = self._two_core_rules()
+        agents.write_text(agents.read_text().replace(
+            " | webapp/2026-07-01-a, shop/2026-07-02-b -->", " -->"))
+        self.assertIn("<!-- akt: second | 2 hits -->", agents.read_text())
+        _, found = set_load(self.kb, "second", "recall")
+        self.assertTrue(found)
+        self.assertNotIn("Rule second", agents.read_text())
+        self.assertIn("Rule first", agents.read_text())
+
+    def test_load_recall_does_not_take_an_id_that_only_starts_the_same(self):
+        agents = self._two_core_rules()
+        add(self.kb, "first-again", "Rule other", "webapp/2026-07-01-a", "2026-07-01")
+        reinforce(self.kb, "first-again", "shop/2026-07-02-b", "2026-07-02", 3)
+        graduate(self.kb, "first-again", core=True)
+        set_load(self.kb, "first", "recall")
+        self.assertIn("akt: first-again", agents.read_text())
+        self.assertNotIn("Rule first\n", agents.read_text())
+
+    def test_load_recall_with_no_block_still_changes_status(self):
+        agents = self._two_core_rules()
+        agents.write_text("# Global Rules\n")
+        e, found = set_load(self.kb, "first", "recall")
+        self.assertFalse(found)
+        self.assertEqual(e["status"], "graduated-recall")
+
+    def test_load_core_round_trips(self):
+        agents = self._two_core_rules()
+        set_load(self.kb, "first", "recall")
+        e, _ = set_load(self.kb, "first", "core")
+        self.assertEqual(e["status"], "graduated-global")
+        self.assertEqual(agents.read_text().count("akt: first"), 1)
+        self.assertIn("- Rule first", agents.read_text())
+
+    def test_load_rejects_same_place_and_other_statuses(self):
+        self._two_core_rules()
+        add(self.kb, "cand", "Rule c", "webapp/2026-07-01-a", "2026-07-01")
+        for lid, where in (("first", "core"), ("cand", "recall")):
+            with self.assertRaises(ValueError):
+                set_load(self.kb, lid, where)
 
     def test_graduate_repo_local_writes_nothing_outside_ledger(self):
         add(self.kb, "l", "Rule text", "webapp/2026-07-01-a", "2026-07-01")
@@ -216,3 +292,42 @@ class MatchTest(unittest.TestCase):
         line = match_line(_entry(rule="R" * 200))
         self.assertIn("R" * 200, line)
         self.assertNotIn("webapp/", line)
+
+
+class RulesForTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.kb = Path(self.tmp.name)
+        fillers = [
+            _entry(id="filler-{}".format(n),
+                   rule="Before the deploy read the log and make a note of step {}".format(n))
+            for n in range(30)
+        ]
+        write_learnings(self.kb, fillers + [
+            _entry(id="sheet-paste", status="graduated-recall",
+                   rule="Paste rows into a spreadsheet grid with a clipboard event before the deploy"),
+            _entry(id="sheet-core", status="graduated-global",
+                   rule="Paste rows into a spreadsheet grid with a clipboard event"),
+            _entry(id="sheet-candidate",
+                   rule="Paste rows into a spreadsheet grid with a clipboard event"),
+        ])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _ids(self, task):
+        return [e["id"] for e in rules_for(self.kb, task)]
+
+    def test_matching_task_prints_only_the_on_recall_rule(self):
+        self.assertEqual(self._ids("paste rows into the spreadsheet grid"), ["sheet-paste"])
+
+    def test_loose_overlap_prints_nothing(self):
+        # Shares "before the deploy" with the rule, words most entries hold.
+        self.assertEqual(self._ids("check the log before the deploy"), [])
+
+    def test_no_shared_word_prints_nothing(self):
+        self.assertEqual(self._ids("zzz qqq"), [])
+
+    def test_empty_ledger_prints_nothing(self):
+        write_learnings(self.kb, [])
+        self.assertEqual(self._ids("paste rows"), [])

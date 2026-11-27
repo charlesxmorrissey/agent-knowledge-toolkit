@@ -24,6 +24,9 @@ Bootstrap or re-sweep the evidence ledger from the story corpus.
 5. **Batch proposals:** do NOT act on `PROPOSE:` lines mid-sweep. Collect them
    and present all of them to the user at the end; then run
    `akt learn graduate <id>` or `akt learn wont <id>` per their answers.
+   For each GLOBAL one, also ask whether it should load in every session
+   (`akt learn graduate <id> --core`) or be printed by `akt recall` when a
+   task matches (no flag).
    For REPO-LOCAL graduations, tell the user the rule block will be added to
    that repo's `AGENTS.md` the next time work happens there (or paste it now
    if the repo is at hand).
