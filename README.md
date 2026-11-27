@@ -175,7 +175,7 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | `end-session <story_path>`                              | Write the next `sessions/NN.md` handoff (body from stdin; the first is `01.md`) and commit the knowledge base (pushing if a remote exists) — same atomic step as `finish-story` |
 | `finish-story <story_path> [--stdin] [--summary "..."] [--keys a,b,c]` | Validate + write the distilled `story.md` (from stdin), append its `INDEX.md` line, and commit the knowledge base (pushing if a remote exists) — one atomic step; `--summary` / `--keys` set/override the frontmatter (so a stdin body needs none, and a written-but-unindexed story is repaired by re-running with `--summary` alone); a story with no keys is indexed with a warning |
 | `update-story <story_path> --stdin [--date YYYY-MM-DD]` | Append a dated `## Update` section to an existing `story.md` (from stdin) and commit the knowledge base — for the next capture in an ongoing thread              |
-| `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath                                                               |
+| `recall "<query>" [--limit N]`                          | Print the most relevant story paths for a task (default 3), each with its summary indented beneath, then any graduated rule that matches the task and is not loaded in every session                                                               |
 | `latest <repo>`                                         | Print the most recently active story path (+ summary) for a repo — an `update-story` append counts as activity — resume without inventing a query                |
 | `drift <story_path> --repos a,b [--pointer] [--date YYYY-MM-DD]` | Per sibling repo (resolved as `../<repo>`): its latest story with last-update line, its git head, and a flag against the main story's last KB commit — `newer` (read it at resume) and/or `stale` (its story predates the main one). `--pointer` appends a templated pointer update to each stale sibling story and commits the KB. It prints one line per stale sibling: `pointer appended: <path>`, or `pointer skipped: <path> (newest update already points here)` when the sibling already links the main story |
 | `digest [--since YYYY-MM-DD]`                            | Print every story (all repos) created or updated since a date (default: today), newest first, with the first line of each qualifying update — a daily status from the KB |
@@ -187,7 +187,8 @@ already links the main story keeps its `stale` flag, and `--pointer` prints
 | ------------------------------------------------ | ------------------------------------------------ |
 | `add <id> "<rule>" --story <repo>/<date>-<slug>` | New candidate at hits 1                          |
 | `reinforce <id> --story <repo>/<date>-<slug>`    | Bump hits; prints `PROPOSE:` at threshold        |
-| `graduate <id>`                                  | Promote; global scope also writes KB `AGENTS.md` |
+| `graduate <id> [--core]`                         | Promote. A global rule stays in the ledger and `akt recall` prints it when a task matches; `--core` writes it to KB `AGENTS.md` so it loads in every session |
+| `load <id> core\|recall`                          | Move a graduated global rule between KB `AGENTS.md` (every session) and the ledger (printed by recall on a match) |
 | `wont <id>`                                      | Mark wont-graduate; stops proposals              |
 | `list [--status STATUS] [--repo REPO] [--compact]` | Print the ledger; `--compact` = id + truncated rule (the scan-pass view) |
 | `match "<lesson>"... [--limit N] [--status STATUS]` | Rank the ledger against each lesson and print the best few (default 5) with the full rule; the learnings pass uses this, so its cost does not grow with the ledger |
@@ -227,7 +228,8 @@ knowledge/
       story.md          # source of truth: problem, decisions + why, outcome
       sessions/        # handoffs, created by `akt end-session` on first use (absent for single-session stories)
         01.md          #   01.md, 02.md, … appear when you end a session mid-story
-  AGENTS.md             # global rules (graduated patterns — future work)
+  AGENTS.md             # core global rules: loaded in every session (`akt learn graduate --core`)
+  LEARNINGS.md          # the ledger: candidates, and graduated rules that recall prints on a match
   INDEX.md              # derived search cache (regenerable; do not hand-edit)
 ```
 
@@ -295,8 +297,9 @@ python3 -m unittest discover -s tests
 - `akt install` — one-command, symlink-based setup: launcher, slash commands, rule file,
   and the `@AKT.md` import, idempotently. `git pull` updates the global install; no sync step.
 - Learning protocol — recurring lessons accrue evidence in LEARNINGS.md via a capture-time
-  pass, and graduate (through a y/n gate, with provenance) into repo-local or global
-  AGENTS.md rules that auto-load in every session; /mine-learnings bootstraps the ledger
+  pass, and graduate (through a y/n gate, with provenance) into repo-local rules, core
+  global rules in AGENTS.md that load in every session, or global rules that `akt recall`
+  prints when a task matches, so the always-loaded file stays small; /mine-learnings bootstraps the ledger
   from existing stories.
 - Session-lifecycle commands — `/resume` and `/wrap` compose the per-verb commands into
   start/end-of-session routines, with a repo-extras hook (`## Resume extras` / `## Wrap extras`

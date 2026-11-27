@@ -55,5 +55,9 @@ allowed-tools: Bash, Read
      and act on their answer: `akt learn graduate <id>` (for a REPO-LOCAL
      proposal, also append the printed rule block to *this* repo's
      `AGENTS.md`/`CLAUDE.md` and commit it with the work) or `akt learn wont <id>`.
+     For a GLOBAL proposal also ask whether the rule should load in every
+     session: yes means `akt learn graduate <id> --core`, for a rule that
+     applies in any repo or guards an action that is hard to undo; without
+     `--core`, `akt recall` prints the rule when a task matches.
    - Project-specific quirks with no transfer value get no entry. Skip the
      pass entirely if `akt` reports no ledger and no KB.

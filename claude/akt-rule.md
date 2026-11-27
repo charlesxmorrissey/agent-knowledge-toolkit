@@ -6,7 +6,7 @@ These rules apply in every repo. They are no-ops when AKT isn't set up, so they 
 
 Recall relevant past work first, and use it:
 
-1. Run `akt recall "<one-line description of the task>"` — it prints up to 3 relevant past story paths (relative to the knowledge base), each with its summary line indented beneath it. Use the summaries to skip clearly irrelevant matches without reading them.
+1. Run `akt recall "<one-line description of the task>"` — it prints up to 3 relevant past story paths (relative to the knowledge base), each with its summary line indented beneath it. Use the summaries to skip clearly irrelevant matches without reading them. If the output ends with a `rules that match this task` block, those are graduated rules that are not loaded in every session: follow each one that applies to the task.
 2. Read each relevant `story.md` (resolve paths against `knowledge_base_path` in `~/.claude/akt-config.md`) and factor the prior decisions, gotchas, and rejected alternatives into your plan **before** writing code.
 
 When the task is "pick up where we left off" rather than a describable problem, run `akt latest <repo>` instead — it prints the most recent story for that repo.
@@ -19,7 +19,7 @@ Capture it so the decision is recorded for next time:
 
 1. If a story isn't already open, run `akt start-story <repo> "<short title>"` (`<repo>` = basename of the repo root).
 2. Distill the work into `story.md` and index it via `akt finish-story <story_path> --stdin --summary "<one line: key decision + because>" --keys a,b,c` (body on stdin, summary and keys on the flags — one call), including the **key decision → because → rejected alternative**. The finish-story flow commits (and pushes, if a remote is set) the knowledge base.
-3. Learnings pass: run `akt learn match "<lesson>" "<lesson>"` with one quoted argument per transferable lesson from this story — it prints the closest ledger entries under each lesson. The same lesson in different words is a match and gets `akt learn reinforce <id> --story <repo>/<date>-<slug>` (also when the entry is already graduated); a lesson with no real match gets `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any `PROPOSE:` line to the user verbatim and act on their answer (`akt learn graduate <id>` / `akt learn wont <id>`); a REPO-LOCAL graduation also means appending the printed rule block to this repo's `AGENTS.md`/`CLAUDE.md` and committing it with the work.
+3. Learnings pass: run `akt learn match "<lesson>" "<lesson>"` with one quoted argument per transferable lesson from this story — it prints the closest ledger entries under each lesson. The same lesson in different words is a match and gets `akt learn reinforce <id> --story <repo>/<date>-<slug>` (also when the entry is already graduated); a lesson with no real match gets `akt learn add <id> "<rule>" --story <repo>/<date>-<slug>`. Relay any `PROPOSE:` line to the user verbatim and act on their answer (`akt learn graduate <id>` / `akt learn wont <id>`). For a GLOBAL proposal also ask whether the rule should load in every session: yes means `akt learn graduate <id> --core`, and it is for rules that apply in any repo or guard an action that is hard to undo; without `--core`, `akt recall` prints the rule when a task matches. A REPO-LOCAL graduation also means appending the printed rule block to this repo's `AGENTS.md`/`CLAUDE.md` and committing it with the work.
 
 Skip capture for trivial/throwaway edits.
 

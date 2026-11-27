@@ -217,8 +217,16 @@ def build_parser():
     lr.add_argument("--story", required=True)
     lr.add_argument("--date", default=None)
 
-    lg = lsub.add_parser("graduate", help="promote; global scope also writes KB AGENTS.md")
+    lg = lsub.add_parser(
+        "graduate", help="promote; a global rule is printed by recall on a match")
     lg.add_argument("id")
+    lg.add_argument("--core", action="store_true",
+                    help="global scope: write the rule to KB AGENTS.md so it loads in every session")
+
+    lload = lsub.add_parser(
+        "load", help="move a graduated global rule: core (every session) or recall (on a match)")
+    lload.add_argument("id")
+    lload.add_argument("where", choices=("core", "recall"))
 
     lw = lsub.add_parser("wont", help="mark wont-graduate; stops proposals")
     lw.add_argument("id")
@@ -332,6 +340,13 @@ def main(argv=None):
         _warn_if_dirty(kb)
         for entry in recall_mod.recall(kb, args.query, args.limit):
             _print_entry(entry)
+        # Graduated rules that are not loaded in every session (issue #77).
+        # Printed after the stories so the story lines keep their shape.
+        rules = learn_mod.rules_for(kb, args.query)
+        if rules:
+            print("rules that match this task (follow them):")
+            for entry in rules:
+                print("  - [{}] {}".format(entry["id"], entry["rule"]))
         return 0
 
     if args.cmd == "latest":
@@ -413,11 +428,28 @@ def main(argv=None):
                     print(proposal)
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: reinforce {}".format(args.id)) + "\n")
             elif args.learn_cmd == "graduate":
-                entry, block = learn_mod.graduate(kb, args.id)
+                entry, block = learn_mod.graduate(kb, args.id, core=args.core)
                 print(block)
                 if entry["status"] == "graduated-repo":
                     print("(repo-local: append the block above to that repo's AGENTS.md/CLAUDE.md and commit it with the work)")
+                elif entry["status"] == "graduated-recall":
+                    print("(on recall: `akt recall` prints this rule when a task matches; "
+                          "`akt learn load {} core` loads it in every session)".format(args.id))
+                else:
+                    print("(core: written to the knowledge base AGENTS.md, loads in every session)")
                 sys.stderr.write(gitkb.commit_kb(kb, "learn: graduate {}".format(args.id)) + "\n")
+            elif args.learn_cmd == "load":
+                entry, found = learn_mod.set_load(kb, args.id, args.where)
+                print(learn_mod.build_learning_line(entry))
+                if args.where == "core":
+                    print("(core: written to the knowledge base AGENTS.md, loads in every session)")
+                elif found:
+                    print("(on recall: removed from the knowledge base AGENTS.md; "
+                          "`akt recall` prints it when a task matches)")
+                else:
+                    print("(on recall: no block for this id was in the knowledge base AGENTS.md, "
+                          "so only the status changed)")
+                sys.stderr.write(gitkb.commit_kb(kb, "learn: load {} {}".format(args.id, args.where)) + "\n")
             elif args.learn_cmd == "wont":
                 entry = learn_mod.wont(kb, args.id)
                 print(learn_mod.build_learning_line(entry))

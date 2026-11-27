@@ -255,10 +255,57 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertIn("PROPOSE: graduate 'cm6-paste' as GLOBAL", out)
 
-        rc, out = self._run(["learn", "graduate", "cm6-paste"])
+        self.assertIn("add --core", out)
+
+        rc, out = self._run(["learn", "graduate", "cm6-paste", "--core"])
         self.assertEqual(rc, 0)
         self.assertIn("<!-- akt: cm6-paste", out)
         self.assertIn("- Verify bundle bytes after paste", (self.kb / "AGENTS.md").read_text())
+
+    def _global_candidate(self, lid, rule):
+        self._story("webapp/2026-07-01-a", "shop/2026-07-02-b")
+        self._run(["learn", "add", lid, rule, "--story", "webapp/2026-07-01-a"])
+        self._run(["learn", "reinforce", lid, "--story", "shop/2026-07-02-b"])
+
+    def test_graduate_without_core_then_recall_prints_the_rule(self):
+        # issue #77
+        self._run(["init", str(self.kb)])
+        before = (self.kb / "AGENTS.md").read_text()
+        self._global_candidate("sheet-paste", "Paste rows into a spreadsheet grid with a clipboard event")
+        self._global_candidate("other", "Read the deploy log first")
+        rc, out = self._run(["learn", "graduate", "sheet-paste"])
+        self.assertEqual(rc, 0)
+        self.assertIn("on recall", out)
+        self.assertEqual((self.kb / "AGENTS.md").read_text(), before)
+        rc, out = self._run(["learn", "show", "sheet-paste"])
+        self.assertIn("status: graduated-recall", out)
+
+        rc, out = self._run(["recall", "paste rows into the spreadsheet grid"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.splitlines(), [
+            "rules that match this task (follow them):",
+            "  - [sheet-paste] Paste rows into a spreadsheet grid with a clipboard event",
+        ])
+        rc, out = self._run(["recall", "zzz"])
+        self.assertEqual(out, "")
+
+    def test_learn_load_moves_a_rule_both_ways(self):
+        self._run(["init", str(self.kb)])
+        self._global_candidate("sheet-paste", "Paste rows into a spreadsheet grid")
+        self._run(["learn", "graduate", "sheet-paste", "--core"])
+        agents = self.kb / "AGENTS.md"
+        self.assertIn("akt: sheet-paste", agents.read_text())
+        rc, out = self._run(["learn", "load", "sheet-paste", "recall"])
+        self.assertEqual(rc, 0)
+        self.assertIn("status: graduated-recall", out)
+        self.assertIn("removed from", out)
+        self.assertNotIn("sheet-paste", agents.read_text())
+        rc, out = self._run(["learn", "load", "sheet-paste", "core"])
+        self.assertIn("status: graduated-global", out)
+        self.assertIn("- Paste rows into a spreadsheet grid", agents.read_text())
+        with self.assertRaises(SystemExit) as ctx:
+            self._run(["learn", "load", "sheet-paste", "core"])
+        self.assertEqual(ctx.exception.code, 2)
 
     def test_learn_story_accepts_recall_style_path(self):
         self._run(["init", str(self.kb)])
